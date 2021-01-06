@@ -1,0 +1,19 @@
+{
+  "name": "spacefighters",
+  "version": "1.0.0",
+  "description": "HTML/NodeJS based multiplier space fighting game",
+  "main": "SpaceFightersMain.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Spenser-Dewey/SpaceFighters.git"
+  },
+  "author": "Spenser Dewey, Jamin Eisenberg",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Spenser-Dewey/SpaceFighters/issues"
+  },
+  "homepage": "https://github.com/Spenser-Dewey/SpaceFighters#readme"
+}
