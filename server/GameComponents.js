@@ -5,9 +5,9 @@ class BaseComponent {
     lines = [];
     live = true;
 
-    constructor(pos, speed, width, height, angle, gameInstance) {
+    constructor(pos, velocity, width, height, angle, gameInstance) {
         this.pos = pos;
-        this.speed = speed;
+        this.velocity = velocity;
         this.width = width;
         this.height = height;
         this.angle = angle;
@@ -16,7 +16,7 @@ class BaseComponent {
     }
 
     update() {
-        this.pos.add(this.speed);
+        this.pos.add(this.velocity);
     }
 
     destroy() {
@@ -27,10 +27,10 @@ class BaseComponent {
 class Asteroid extends BaseComponent {
     live = true;
 
-    constructor(pos, speed, rotSpeed, size, splinterSteps, gameInstance) {
-        super(pos, speed, size * 2, size * 2, 0, gameInstance);
+    constructor(pos, velocity, rotvelocity, size, splinterSteps, gameInstance) {
+        super(pos, velocity, size * 2, size * 2, 0, gameInstance);
         this.size = size;
-        this.rotationSpeed = rotSpeed;
+        this.rotationalVelocity = rotvelocity;
         this.splinterSteps = splinterSteps;
 
         var dist = Math.random() * this.size / 2 + this.size / 2;
@@ -60,7 +60,7 @@ class Asteroid extends BaseComponent {
 
     update() {
         super.update();
-        this.angle += this.rotationSpeed % (Math.PI * 2);
+        this.angle = (this.angle + this.rotationalVelocity) % (Math.PI * 2);
     }
 }
 
@@ -78,8 +78,8 @@ const createRandomAsteroid = function (gameInstance) {
 
 class Bullet extends BaseComponent {
 
-    constructor(pos, bulletSpeed, angle, color, gameInstance) {
-        super(pos, bulletSpeed, 16, 4, angle, gameInstance);
+    constructor(pos, bulletVelocity, angle, color, gameInstance) {
+        super(pos, bulletVelocity, 16, 4, angle, gameInstance);
         this.deathTime = this.gameInstance.frameTimer + 200;
         this.color = color;
 
@@ -102,8 +102,8 @@ class Ship extends BaseComponent {
     lastShotTime = 0;
     keys = [];
 
-    constructor(pos, speed, width, height, angle, bulletColor, wingColor, bodyColor, gameInstance) {
-        super(pos, speed, width, height, angle, gameInstance);
+    constructor(pos, velocity, width, height, angle, bulletColor, wingColor, bodyColor, gameInstance) {
+        super(pos, velocity, width, height, angle, gameInstance);
         this.trueWidth = width;
         this.trueHeight = height;
         this.bulletColor = bulletColor;
@@ -123,8 +123,8 @@ class Ship extends BaseComponent {
                 break;
             }
         }
-        this.speed.x = 0;
-        this.speed.y = 0;
+        this.velocity.x = 0;
+        this.velocity.y = 0;
         this.width = this.trueWidth;
         this.height = this.trueHeight;
 
@@ -132,8 +132,8 @@ class Ship extends BaseComponent {
 
     shoot() {
         this.gameInstance.addObject(new Bullet(this.pos.x + Math.cos(this.angle) * this.width / 2, this.pos.y + Math.sin(this.angle) * this.height / 2,
-            Vector2D.create(10 * Math.cos(this.angle) + this.speed.x,
-                10 * Math.sin(this.angle) + this.speed.y),
+            Vector2D.create(10 * Math.cos(this.angle) + this.velocity.x,
+                10 * Math.sin(this.angle) + this.velocity.y),
             this.angle, color, this.gameInstance));
         this.lastShotTime = this.gameInstance.frameTimer;
     }
@@ -144,12 +144,12 @@ class Ship extends BaseComponent {
         if (this.keys["w"] || this.keys["s"] || this.keys["d"] || this.keys["a"]) {
 
             if (this.keys["w"]) {
-                this.speed.x += .1 * Math.cos(this.angle);
-                this.speed.y += .1 * Math.sin(this.angle);
+                this.velocity.x += .1 * Math.cos(this.angle);
+                this.velocity.y += .1 * Math.sin(this.angle);
             }
             if (this.keys["s"]) {
-                this.speed.x += -.1 * Math.cos(this.angle);
-                this.speed.y += -.1 * Math.sin(this.angle);
+                this.velocity.x += -.1 * Math.cos(this.angle);
+                this.velocity.y += -.1 * Math.sin(this.angle);
             }
             if (this.keys["a"]) {
                 this.angle -= .1;
@@ -175,7 +175,7 @@ class Ship extends BaseComponent {
                 this.hyperjump();
             }
         }
-        this.speed = this.speed.constMult(.99);
+        this.velocity = this.velocity.constMult(.99);
     }
 
 }
