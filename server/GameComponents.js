@@ -1,18 +1,18 @@
-import GameState from './SpaceFightersMain';
-import Vector2D from './Utils.js';
-import Line from './Utils.js';
-import overlap from './Utils';
+const { Vector2D, Line, overlap } = require('./Utils');
+const Constants = require('./Constants');
 
 class BaseComponent {
     lines = [];
     live = true;
 
-    constructor(pos, speed, width, height, angle) {
+    constructor(pos, speed, width, height, angle, gameInstance) {
         this.pos = pos;
         this.speed = speed;
         this.width = width;
         this.height = height;
         this.angle = angle;
+        this.gameInstance = gameInstance;
+        this.id = gameInstance.getNextID();
     }
 
     update() {
@@ -25,20 +25,18 @@ class BaseComponent {
 }
 
 class Asteroid extends BaseComponent {
-    size = 0;
-    splinterSteps = 0;
-    rotationSpeed = 0;
     live = true;
 
-    constructor(pos, speed, rotSpeed, size, splinterSteps) {
-        super(pos, speed, size * 2, size * 2, 0);
-        this.rotSpeed = rotSpeed;
+    constructor(pos, speed, rotSpeed, size, splinterSteps, gameInstance) {
+        super(pos, speed, size * 2, size * 2, 0, gameInstance);
+        this.size = size;
+        this.rotationSpeed = rotSpeed;
         this.splinterSteps = splinterSteps;
 
         var dist = Math.random() * this.size / 2 + this.size / 2;
         var lastPoint = Vector2D.create(dist, 0);
         var nextPoint;
-        for (var i = Math.random() / 4 + .25; i < 2 * Math.PI; i += Math.random() / 4 + .25) {
+        for (var i = Math.random() / 4 + .5; i < 2 * Math.PI; i += Math.random() / 4 + .5) {
             // dist = Math.min(Math.max(dist + Math.random() * this.size / 2 - this.size / 4, this.size / 2), this.size);
             dist = Math.random() * this.size / 2 + this.size / 2;
             nextPoint = Vector2D.create(Math.cos(i) * dist, Math.sin(i) * dist);
@@ -51,11 +49,11 @@ class Asteroid extends BaseComponent {
     destroy() {
         if (this.live) {
             this.live = false;
-            if (splinterSteps > 0) {
-                SpaceFightersMain.addObject(Asteroid.create(this.pos, Vector2D.createRandom(-5, 5, -5, 5),
-                    Math.random() * 4 * Math.PI - Math.PI * 2, this.size * .8, splinterSteps - 1));
-                SpaceFightersMain.addObject(Asteroid.create(this.pos, Vector2D.createRandom(-5, 5, -5, 5),
-                    Math.random() * 4 * Math.PI - Math.PI * 2, this.size * .8, splinterSteps - 1));
+            if (this.splinterSteps > 0) {
+                this.gameInstance.addObject(new Asteroid(this.pos, Vector2D.createRandom(-5, 5, -5, 5),
+                    Math.random() * 4 * Math.PI - Math.PI * 2, this.size * .8, this.splinterSteps - 1, this.gameInstance));
+                this.gameInstance.addObject(new Asteroid(this.pos, Vector2D.createRandom(-5, 5, -5, 5),
+                    Math.random() * 4 * Math.PI - Math.PI * 2, this.size * .8, this.splinterSteps - 1, this.gameInstance));
             }
         }
     }
@@ -66,18 +64,25 @@ class Asteroid extends BaseComponent {
     }
 }
 
-const createRandomAsteroid = function () {
-    return new Asteroid(Vector2D.createRandom(0, 500, 0, 500), Vector2D.createRandom(-5, 5, -5, 5),
-        Math.random() * 4 * Math.PI - Math.PI * 2, 75, 3);
+const createRandomAsteroid = function (gameInstance) {
+    return new Asteroid(Vector2D.createRandom(0, Constants.width, 0, Constants.height), Vector2D.createRandom(-5, 5, -5, 5),
+        Math.random() * 4 * Math.PI - Math.PI * 2, 75, 3, gameInstance);
 }
 
+// class Star extends BaseComponent {
+
+//     constructor(pos) {
+//         super(pos, Vector2D.create(0, 0), 2, 2, 0);
+//     }
+// }
+
 class Bullet extends BaseComponent {
-    
-    constructor (pos, bulletSpeed, angle, color) {
-        super(pos, bulletSpeed, 16, 4, angle);
-        this.deathTime = GameState.frameTimer + 200;
+
+    constructor(pos, bulletSpeed, angle, color, gameInstance) {
+        super(pos, bulletSpeed, 16, 4, angle, gameInstance);
+        this.deathTime = this.gameInstance.frameTimer + 200;
         this.color = color;
-    
+
         this.lines.push(Line.create(Vector2D.create(-this.width / 2, -this.height / 2), Vector2D.create(this.width / 2, -this.height)));
         this.lines.push(Line.create(Vector2D.create(this.width / 2, -this.height / 2), Vector2D.create(this.width / 2, this.height)));
         this.lines.push(Line.create(Vector2D.create(this.width / 2, this.height / 2), Vector2D.create(-this.width / 2, this.height)));
@@ -86,16 +91,93 @@ class Bullet extends BaseComponent {
 
     update() {
         super.update();
-        if (this.deathTime <= GameState.frameTimer) {
+        if (this.deathTime <= this.gameInstance.frameTimer) {
             this.live = false;
-        }
-        if (aster = GameState.asteroids.find(asteroid => overlap(asteroid, this))) {
-            this.destroy();
-            aster.destroy();
-        } else if (ship = GameState.ships.find(plShip => overlap(this, plShip))) {
-            this.destroy();
-            ship.destroy();
         }
     }
 }
 
+class Ship extends BaseComponent {
+    bulletDelay = 20;
+    lastShotTime = 0;
+    keys = [];
+
+    constructor(pos, speed, width, height, angle, bulletColor, wingColor, bodyColor, gameInstance) {
+        super(pos, speed, width, height, angle, gameInstance);
+        this.trueWidth = width;
+        this.trueHeight = height;
+        this.bulletColor = bulletColor;
+        this.wingColor = wingColor;
+        this.bodyColor = bodyColor;
+
+        this.lines.push(Line.create(Vector2D.create(-this.width / 2, -this.height / 2), Vector2D.create(this.width / 2, 0)));
+        this.lines.push(Line.create(Vector2D.create(this.width / 2, 0), Vector2D.create(-this.width / 2, this.height / 2)));
+        this.lines.push(Line.create(Vector2D.create(-this.width / 2, this.height / 2), Vector2D.create(-this.width / 2, -this.height / 2)));
+    }
+
+    hyperjump() {
+        pos = Vector2D.createRandom(0, Constants.width, 0, Constants.height);
+        for (var i = 0; i < this.gameInstance.asteroids.length; i++) {
+            if (overlap(this.gameInstance.asteroids[i], this)) {
+                this.hyperjump();
+                break;
+            }
+        }
+        this.speed.x = 0;
+        this.speed.y = 0;
+        this.width = this.trueWidth;
+        this.height = this.trueHeight;
+
+    }
+
+    shoot() {
+        this.gameInstance.addObject(new Bullet(this.pos.x + Math.cos(this.angle) * this.width / 2, this.pos.y + Math.sin(this.angle) * this.height / 2,
+            Vector2D.create(10 * Math.cos(this.angle) + this.speed.x,
+                10 * Math.sin(this.angle) + this.speed.y),
+            this.angle, color, this.gameInstance));
+        this.lastShotTime = this.gameInstance.frameTimer;
+    }
+
+    update() {
+        super.update();
+
+        if (this.keys["w"] || this.keys["s"] || this.keys["d"] || this.keys["a"]) {
+
+            if (this.keys["w"]) {
+                this.speed.x += .1 * Math.cos(this.angle);
+                this.speed.y += .1 * Math.sin(this.angle);
+            }
+            if (this.keys["s"]) {
+                this.speed.x += -.1 * Math.cos(this.angle);
+                this.speed.y += -.1 * Math.sin(this.angle);
+            }
+            if (this.keys["a"]) {
+                this.angle -= .1;
+            }
+            if (this.keys["d"]) {
+                this.angle += .1;
+            }
+        }
+
+        if (this.keys[" "] && this.gameInstance.frameTimer > this.lastShotTime + this.bulletDelay) {
+            this.shoot();
+        }
+        if (this.keys["h"]) {
+            if (!this.hyperjumpTimer) {
+                this.hyperjumpTimer = 60;
+            }
+        }
+
+        if (this.hyperjumpTimer) {
+            this.width *= .96;
+            this.height *= .96;
+            if (!(--this.hyperjumpTimer)) {
+                this.hyperjump();
+            }
+        }
+        this.speed = this.speed.constMult(.99);
+    }
+
+}
+
+module.exports = { Asteroid, Ship, Bullet, createRandomAsteroid };

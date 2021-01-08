@@ -1,19 +1,19 @@
-const Vector2D = function () {
+const Vector2D = (function () {
 
     let basicVector = {
         x: 0,
         y: 0,
 
         add(otherVec) {
-            this.x = otherVec.x;
-            this.y = otherVec.y;
+            this.x += otherVec.x;
+            this.y += otherVec.y;
         },
         addAtAngle(value, angle) {
             this.x += value * Math.cos(angle);
             this.y += value * Math.sin(angle);
         },
         constMult(factor) {
-            var scaleVec = new Vector2D(this.x * factor, this.y * factor);
+            var scaleVec = Vector2D.create(this.x * factor, this.y * factor);
             if (Math.abs(scaleVec.x) < .001) {
                 scaleVec.x = 0;
             }
@@ -35,7 +35,7 @@ const Vector2D = function () {
             this.y = magnitude * Math.sin(myAngle);
         },
         wrap(minX, maxX, minY, maxY) {
-            const wrappedVec = new Vector2D(this.x, this.y);
+            const wrappedVec = Vector2D.create(this.x, this.y);
             if (this.x < minX) {
                 wrappedVec.x = maxX - (minX - this.x);
             } else if (this.x > maxX) {
@@ -51,27 +51,27 @@ const Vector2D = function () {
         }
     }
 
-    const createVectorAtAngle = function (x, y, angle) {
-        return this.create(x * Math.cos(angle), y * Math.sin(angle));
-    }
-
-    const createRandom = function (minX, maxX, minY, maxY) {
-        return this.create(Math.random() * (maxX - minX) + minX, Math.random() * (maxY - minY) + minY);
-    }
-
     const create = function (x, y) {
-        const obj = Object.create(this.basicVector);
+        const obj = Object.create(basicVector);
         obj.x = x;
         obj.y = y;
         return obj;
     };
+    
+    const createVectorAtAngle = function (x, y, angle) {
+        return create(x * Math.cos(angle), y * Math.sin(angle));
+    }
 
+    const createRandom = function (minX, maxX, minY, maxY) {
+        return create(Math.random() * (maxX - minX) + minX, Math.random() * (maxY - minY) + minY);
+    }
+    
     return { create, createRandom, createVectorAtAngle };
-}
+})();
 
-const Line = function () {
+const Line = (function () {
 
-    this.basicLine = {
+    const basicLine = {
         p1: null,
         p2: null,
 
@@ -92,10 +92,10 @@ const Line = function () {
 
         overlaps(otherLine) {
             //Code adopted from GeeksForGeeks
-            const o1 = this.orientation(this.p1, this.p2, otherLine.p1);
-            const o2 = this.orientation(this.p1, this.p2, otherLine.p2);
-            const o3 = this.orientation(otherLine.p1, otherLine.p2, this.p1);
-            const o4 = this.orientation(otherLine.p1, otherLine.p2, this.p2);
+            const o1 = orientation(this.p1, this.p2, otherLine.p1);
+            const o2 = orientation(this.p1, this.p2, otherLine.p2);
+            const o3 = orientation(otherLine.p1, otherLine.p2, this.p1);
+            const o4 = orientation(otherLine.p1, otherLine.p2, this.p2);
 
             // General case
             if (o1 != o2 && o3 != o4)
@@ -103,30 +103,30 @@ const Line = function () {
 
             // Special Cases 
             // p1, q1 and p2 are colinear and p2 lies on segment p1q1 
-            if (o1 == 0 && this.onSegment(this.p1, otherLine.p1, this.p2)) return true;
+            if (o1 == 0 && onSegment(this.p1, otherLine.p1, this.p2)) return true;
 
             // p1, q1 and q2 are colinear and q2 lies on segment p1q1 
-            if (o2 == 0 && this.onSegment(this.p1, otherLine.p2, this.p2)) return true;
+            if (o2 == 0 && onSegment(this.p1, otherLine.p2, this.p2)) return true;
 
             // p2, q2 and p1 are colinear and p1 lies on segment p2q2 
-            if (o3 == 0 && this.onSegment(otherLine.p1, this.p1, otherLine.p2)) return true;
+            if (o3 == 0 && onSegment(otherLine.p1, this.p1, otherLine.p2)) return true;
 
             // p2, q2 and q1 are colinear and q1 lies on segment p2q2 
-            if (o4 == 0 && this.onSegment(otherLine.p1, this.p2, otherLine.p2)) return true;
+            if (o4 == 0 && onSegment(otherLine.p1, this.p2, otherLine.p2)) return true;
 
             return false; // Doesn't fall in any of the above cases 
         }
-    }
+    };
 
-    this.create = function (startPoint, endPoint) {
-        const obj = Object.create(this.basicLine);
+    const create = function (startPoint, endPoint) {
+        const obj = Object.create(basicLine);
         obj.p1 = startPoint;
         obj.p2 = endPoint;
         return obj;
     };
 
     return { create };
-}
+})();
 
 function onSegment(start, q, end) {
     return (q.x <= Math.max(start.x, end.x) && q.x >= Math.min(start.x, end.x) &&
@@ -145,7 +145,7 @@ function overlap(firstShape, otherShape) {
     if (Math.abs(firstShape.pos.x - otherShape.pos.x) < otherShape.width / 2 + firstShape.width / 2
         && Math.abs(firstShape.pos.y - otherShape.pos.y) < otherShape.height / 2 + firstShape.height / 2) {
         //Check specific patterning
-        const shiftAmount = new Vector2D(firstShape.pos.x - otherShape.pos.x, firstShape.pos.y - otherShape.pos.y);
+        const shiftAmount = Vector2D.create(firstShape.pos.x - otherShape.pos.x, firstShape.pos.y - otherShape.pos.y);
         var myShiftedLine;
         var otherShiftedLine;
         for (var i = firstShape.lines.length - 1; i > -1; i--) {
@@ -162,3 +162,5 @@ function overlap(firstShape, otherShape) {
     }
     return false;
 }
+
+module.exports = {Vector2D, Line, overlap};
