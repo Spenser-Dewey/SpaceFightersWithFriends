@@ -70,6 +70,7 @@ function checkCollisions() {
       GameState.ships[i].destroy();
       aster.destroy();
       GameState.events[Constants.savedFrames].collisions.push({ asteroid: aster.id, ship: GameState.ships[i].id });
+      console.log("DESTRUCTION");
     }
     else if (bullet = GameState.bullets.find(bullet => overlap(bullet, GameState.ships[i]))) {
       GameState.ships[i].destroy();
@@ -98,7 +99,6 @@ http.createServer(function (req, res) {
   });
 
   req.on('end', () => {
-    console.log("RECIEVED DATA " + data);
     sendResponse(JSON.parse(data), res);
   });
 }).listen(80);
@@ -107,11 +107,15 @@ function sendResponse(data, responseObj) {
   if (data.type == "join") {
     const gameData = {};
     const newShip = new Ship(Vector2D.createRandom(0, Constants.width, 0, Constants.height),
-      Vector2D.create(0, 0), 60, 60, 0, data.bulletColor, data.wingColor, data.bodyColor, GameState);
-      gameData.asteroids = GameState.asteroids;
-      gameData.bullets = GameState.bullets;
-      gameData.frameTimer = GameState.frameTimer + 1;
-      gameData.id = newShip.id;
+    Vector2D.create(0, 0), 60, 60, 0, data.bulletColor, data.wingColor, data.bodyColor, GameState);
+    gameData.asteroids = GameState.asteroids;
+    gameData.bullets = GameState.bullets;
+    gameData.frameTimer = GameState.frameTimer + 1;
+    gameData.type = "join";
+    gameData.clientWidth = Constants.clientWidth;
+    gameData.clientHeight = Constants.clientHeight;
+    gameData.id = newShip.id;
+    console.log("New ship element " + newShip.id + " at (" + newShip.pos.x + ", " + newShip.pos.y + ")");
       responseObj.end(JSON.stringify(gameData, stringifyData));
       GameState.addObject(newShip);
   } else if (!data.type || data.type == "update") {
@@ -119,15 +123,22 @@ function sendResponse(data, responseObj) {
     if (playerShip && data.key)
       playerShip.keys[data.key] = data.pressed;
 
-    const eventObj = [];
+    var eventObj = [];
     if(data.lastFrame) {
-      for (let i = Math.max(Constants.savedFrames - GameState.frameTimer - data.lastFrame, 0); i < GameState.frameTimer - 1; i++) {
-        eventObj.push(GameState.events[i]);
+      for (let i = Math.max(Constants.savedFrames - GameState.frameTimer - data.lastFrame, 0); i < Constants.savedFrames - 1; i++) {
+        if(GameState.events[i]){
+          eventObj.push(GameState.events[i]);
+        } else {
+          console.log(i);
+        }
       }
+      responseObj.end(JSON.stringify(eventObj, stringifyData));
     } else {
-      eventObj.push(GameState.events[Constants.savedFrames - 1]);
+      eventObj = GameState.events[Constants.savedFrames - 1];
+      eventObj.type = "update";
+      // eventObj.push(GameState.events[Constants.savedFrames - 1]);
+      responseObj.end(JSON.stringify(eventObj, stringifyData));
     }
-    responseObj.end(JSON.stringify(eventObj, stringifyData));
   }
 }
 

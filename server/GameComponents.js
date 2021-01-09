@@ -17,6 +17,7 @@ class BaseComponent {
 
     update() {
         this.pos.add(this.velocity);
+        this.pos = this.pos.wrap(0, Constants.width, 0, Constants.height);
     }
 
     destroy() {
@@ -65,8 +66,8 @@ class Asteroid extends BaseComponent {
 }
 
 const createRandomAsteroid = function (gameInstance) {
-    return new Asteroid(Vector2D.createRandom(0, Constants.width, 0, Constants.height), Vector2D.createRandom(-5, 5, -5, 5),
-        Math.random() * 4 * Math.PI - Math.PI * 2, 75, 3, gameInstance);
+    return new Asteroid(Vector2D.createRandom(0, Constants.width, 0, Constants.height), Vector2D.createRandom(-.5, .5, -.5, .5),
+        Math.random() * .05 - .025, 75, 3, gameInstance);
 }
 
 // class Star extends BaseComponent {
@@ -131,10 +132,11 @@ class Ship extends BaseComponent {
     }
 
     shoot() {
-        this.gameInstance.addObject(new Bullet(this.pos.x + Math.cos(this.angle) * this.width / 2, this.pos.y + Math.sin(this.angle) * this.height / 2,
-            Vector2D.create(10 * Math.cos(this.angle) + this.velocity.x,
-                10 * Math.sin(this.angle) + this.velocity.y),
-            this.angle, color, this.gameInstance));
+        this.gameInstance.addObject(
+            new Bullet(Vector2D.create(this.pos.x + Math.cos(this.angle) * this.width / 2, this.pos.y + Math.sin(this.angle) * this.height / 2),
+                Vector2D.create(10 * Math.cos(this.angle) + this.velocity.x,
+                    10 * Math.sin(this.angle) + this.velocity.y),
+                this.angle, this.bulletColor, this.gameInstance));
         this.lastShotTime = this.gameInstance.frameTimer;
     }
 
