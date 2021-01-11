@@ -37,7 +37,7 @@ class Asteroid extends BaseComponent {
         var dist = Math.random() * this.size / 2 + this.size / 2;
         var lastPoint = Vector2D.create(dist, 0);
         var nextPoint;
-        for (var i = Math.random() / 4 + .5; i < 2 * Math.PI; i += Math.random() / 4 + .5) {
+        for (var i = Math.random() / 2 + 1; i < 2 * Math.PI; i += Math.random() / 2 + 1) {
             // dist = Math.min(Math.max(dist + Math.random() * this.size / 2 - this.size / 4, this.size / 2), this.size);
             dist = Math.random() * this.size / 2 + this.size / 2;
             nextPoint = Vector2D.create(Math.cos(i) * dist, Math.sin(i) * dist);
@@ -51,10 +51,10 @@ class Asteroid extends BaseComponent {
         if (this.live) {
             this.live = false;
             if (this.splinterSteps > 0) {
-                this.gameInstance.addObject(new Asteroid(this.pos, Vector2D.createRandom(-5, 5, -5, 5),
-                    Math.random() * 4 * Math.PI - Math.PI * 2, this.size * .8, this.splinterSteps - 1, this.gameInstance));
-                this.gameInstance.addObject(new Asteroid(this.pos, Vector2D.createRandom(-5, 5, -5, 5),
-                    Math.random() * 4 * Math.PI - Math.PI * 2, this.size * .8, this.splinterSteps - 1, this.gameInstance));
+                this.gameInstance.addObject(new Asteroid(this.pos, Vector2D.createRandom(-2, 2, -2, 2),
+                Math.random() * .05 - .025, this.size * .8, this.splinterSteps - 1, this.gameInstance));
+                this.gameInstance.addObject(new Asteroid(this.pos, Vector2D.createRandom(-2, 2, -2, 2),
+                Math.random() * .05 - .025, this.size * .8, this.splinterSteps - 1, this.gameInstance));
             }
         }
     }
@@ -66,7 +66,7 @@ class Asteroid extends BaseComponent {
 }
 
 const createRandomAsteroid = function (gameInstance) {
-    return new Asteroid(Vector2D.createRandom(0, Constants.width, 0, Constants.height), Vector2D.createRandom(-.5, .5, -.5, .5),
+    return new Asteroid(Vector2D.createRandom(0, Constants.width, 0, Constants.height), Vector2D.createRandom(-1, 1, -1, 1),
         Math.random() * .05 - .025, 75, 3, gameInstance);
 }
 
@@ -103,10 +103,11 @@ class Ship extends BaseComponent {
     lastShotTime = 0;
     keys = [];
 
-    constructor(pos, velocity, width, height, angle, bulletColor, wingColor, bodyColor, gameInstance) {
+    constructor(pos, velocity, width, height, angle, bulletColor, wingColor, bodyColor, username, gameInstance) {
         super(pos, velocity, width, height, angle, gameInstance);
         this.trueWidth = width;
         this.trueHeight = height;
+        this.username = username;
         this.bulletColor = bulletColor;
         this.wingColor = wingColor;
         this.bodyColor = bodyColor;
@@ -133,11 +134,18 @@ class Ship extends BaseComponent {
 
     shoot() {
         this.gameInstance.addObject(
-            new Bullet(Vector2D.create(this.pos.x + Math.cos(this.angle) * this.width / 2, this.pos.y + Math.sin(this.angle) * this.height / 2),
+            new Bullet(Vector2D.create(this.pos.x + Math.cos(this.angle) * (this.width / 2 + 16), this.pos.y + Math.sin(this.angle) * (this.height / 2 + 16)),
                 Vector2D.create(10 * Math.cos(this.angle) + this.velocity.x,
                     10 * Math.sin(this.angle) + this.velocity.y),
                 this.angle, this.bulletColor, this.gameInstance));
         this.lastShotTime = this.gameInstance.frameTimer;
+    }
+
+    setKeys(pressedKeys) {
+        this.keys = [];
+        for (let i = pressedKeys.length - 1; i > -1; i--) {
+            this.keys[pressedKeys[i]] = true;
+        }
     }
 
     update() {

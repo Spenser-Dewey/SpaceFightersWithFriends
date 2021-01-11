@@ -144,6 +144,8 @@ function overlap(firstShape, otherShape) {
     //Quickly check by radius
     if (Math.abs(firstShape.pos.x - otherShape.pos.x) < otherShape.width / 2 + firstShape.width / 2
         && Math.abs(firstShape.pos.y - otherShape.pos.y) < otherShape.height / 2 + firstShape.height / 2) {
+        // console.log(JSON.stringify(firstShape, stringifyData));
+        // console.log(JSON.stringify(otherShape, stringifyData));
         //Check specific patterning
         const shiftAmount = Vector2D.create(firstShape.pos.x - otherShape.pos.x, firstShape.pos.y - otherShape.pos.y);
         var myShiftedLine;
@@ -163,4 +165,39 @@ function overlap(firstShape, otherShape) {
     return false;
 }
 
-module.exports = {Vector2D, Line, overlap};
+function stringifyData(key, value) {
+    if (key == "lines") {
+      let returnArr = [];
+      for (let i = value.length - 1; i > -1; i--) {
+        returnArr.push(value[i].p1);
+      }
+      return returnArr;
+    } else if (key == "gameInstance" || key == "splinterSteps" || key == "size") {
+      return undefined;
+    } else if (key == "ships") {
+      return JSON.parse(JSON.stringify(value, stringifyShip));
+    } else if (key == "bullets") {
+      return JSON.parse(JSON.stringify(value, stringifyBullet));
+    } else {
+      return value;
+    }
+  }
+  
+  function stringifyShip(key, value) {
+    if (key == "lines" || key == "bulletColor" || key == "keys" || key == "trueWidth" || key == "trueHeight"
+      || key == "live" || key == "gameInstance") {
+      return undefined;
+    } else {
+      return value;
+    }
+  }
+  
+  function stringifyBullet(key, value) {
+    if (key == "lines" || key == "live" || key == "gameInstance") {
+      return undefined;
+    } else {
+      return value;
+    }
+  }
+
+module.exports = {Vector2D, Line, overlap, stringifyData, stringifyShip, stringifyBullet};
