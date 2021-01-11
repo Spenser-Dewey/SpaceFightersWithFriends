@@ -70,13 +70,13 @@ function checkCollisions() {
     if (aster = GameState.asteroids.find(asteroid => overlap(asteroid, GameState.ships[i]))) {
       GameState.ships[i].destroy();
       aster.destroy();
-      GameState.events[Constants.savedFrames].collisions.push({ asteroid: aster.id, ship: GameState.ships[i].id });
+      GameState.events[Constants.savedFrames].collisions.push({ asteroid: aster, ship: GameState.ships[i] });
       console.log("DESTRUCTION OF SHIP " + GameState.ships[i].id + " PILOTED BY " + GameState.ships[i].username);
     }
     else if (bullet = GameState.bullets.find(bullet => overlap(bullet, GameState.ships[i]))) {
       GameState.ships[i].destroy();
       bullet.destroy();
-      GameState.events[Constants.savedFrames].collisions.push({ bullet: bullet.id, ship: GameState.ships[i].id });
+      GameState.events[Constants.savedFrames].collisions.push({ bullet: bullet, ship: GameState.ships[i] });
       console.log("DESTRUCTION OF SHIP " + GameState.ships[i].id + " PILOTED BY " + GameState.ships[i].username);
     }
   }
@@ -84,7 +84,7 @@ function checkCollisions() {
     if (aster = GameState.asteroids.find(asteroid => overlap(asteroid, GameState.bullets[i]))) {
       GameState.bullets[i].destroy();
       aster.destroy();
-      GameState.events[Constants.savedFrames].collisions.push({ asteroid: aster.id, bullet: GameState.bullets[i].id });
+      GameState.events[Constants.savedFrames].collisions.push({ asteroid: aster, bullet: GameState.bullets[i] });
     }
   }
 }
