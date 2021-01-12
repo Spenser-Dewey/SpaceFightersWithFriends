@@ -93,19 +93,28 @@ exports.GameState = GameState;
 
 GameState.start();
 
-http.createServer(function (req, res) {
-  res.writeHead(200, { 'Content-Type': 'text/html', 'Access-Control-Allow-Origin': '*' });
-  let data = "";
-  req.on('data', chunk => {
-    data += chunk;
+const WebSocket = require('ws');
+const server = new WebSocket.Server({
+  port: 80
+});
+
+let sockets = [];
+
+server.on('connection', function(socket) {
+  sockets.push(socket);
+
+  // When you receive a message, send that message to every socket.
+  socket.on('message', function(msg) {
+    sendResponse(JSON.parse(msg), socket);
   });
 
-  req.on('end', () => {
-    sendResponse(JSON.parse(data), res);
+  // When a socket closes, or disconnects, remove it from the array.
+  socket.on('close', function() {
+    sockets = sockets.filter(s => s !== socket);
   });
-}).listen(80);
+});
 
-function sendResponse(data, responseObj) {
+function sendResponse(data, socket) {
   if (data.type == "join") {
     const gameData = {};
     const newShip = new Ship(Vector2D.createRandom(0, Constants.clientWidth, 0, Constants.clientHeight),
@@ -122,7 +131,8 @@ function sendResponse(data, responseObj) {
     GameState.addObject(newShip);
     gameData.ships = GameState.ships;
     console.log("New ship element " + newShip.id + " at (" + newShip.pos.x + ", " + newShip.pos.y + ") piloted by " + newShip.username);
-    responseObj.end(JSON.stringify(gameData, stringifyData));
+    socket.send(JSON.stringify(gameData, stringifyData));
+
   } else if (!data.type || data.type == "update") {
     let playerShip = GameState.ships.find(ship => ship.id == data.id);
     if (playerShip && data.keys) {
@@ -141,12 +151,6 @@ function sendResponse(data, responseObj) {
       eventObj.collisions = eventObj.collisions.concat(GameState.events[i].collisions);
       eventObj.deaths = eventObj.deaths.concat(GameState.events[i].deaths);
     }
-    // if (eventObj.collisions.length > 0 || eventObj.deaths.length > 0) {
-    //   console.log(Math.max(Constants.savedFrames - (GameState.frameTimer - 1- data.lastFrame), 0) + " to " + (Constants.savedFrames - 1));
-    //   console.log("EVENT AT: " + eventObj.frameTimer + " request " + data.lastFrame);
-    //   console.log(eventObj.collisions);
-    //   console.log(eventObj.deaths);
-    // }
-    responseObj.end(JSON.stringify(eventObj, stringifyData));
+    socket.send(JSON.stringify(eventObj, stringifyData));
   }
 }

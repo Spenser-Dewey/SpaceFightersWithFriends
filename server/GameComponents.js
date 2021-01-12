@@ -67,15 +67,8 @@ class Asteroid extends BaseComponent {
 
 const createRandomAsteroid = function (gameInstance) {
     return new Asteroid(Vector2D.createRandom(0, Constants.width, 0, Constants.height), Vector2D.createRandom(-1, 1, -1, 1),
-        Math.random() * .05 - .025, 75, 3, gameInstance);
+        Math.random() * .05 - .025, 75, 2, gameInstance);
 }
-
-// class Star extends BaseComponent {
-
-//     constructor(pos) {
-//         super(pos, Vector2D.create(0, 0), 2, 2, 0);
-//     }
-// }
 
 class Bullet extends BaseComponent {
 

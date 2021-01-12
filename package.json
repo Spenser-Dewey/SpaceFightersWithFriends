@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/Spenser-Dewey/SpaceFighters/issues"
   },
-  "homepage": "https://github.com/Spenser-Dewey/SpaceFighters#readme"
+  "homepage": "https://github.com/Spenser-Dewey/SpaceFighters#readme",
+  "dependencies": {
+    "ws": "^7.4.2"
+  }
 }
