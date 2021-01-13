@@ -48,6 +48,9 @@ const Vector2D = (function () {
                 wrappedVec.y = minY + (this.y - maxY);
             }
             return wrappedVec;
+        },
+        manDistanceTo(otherVector) {
+            return Math.abs(this.x - otherVector.x) + Math.abs(this.y - otherVector.y);
         }
     }
 

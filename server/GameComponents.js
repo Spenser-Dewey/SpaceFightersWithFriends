@@ -37,7 +37,7 @@ class Asteroid extends BaseComponent {
         var dist = Math.random() * this.size / 2 + this.size / 2;
         var lastPoint = Vector2D.create(dist, 0);
         var nextPoint;
-        for (var i = Math.random() / 2 + 1; i < 2 * Math.PI; i += Math.random() / 2 + 1) {
+        for (var i = Math.random() / 4 + .25; i < 2 * Math.PI; i += Math.random() / 4 + .25) {
             // dist = Math.min(Math.max(dist + Math.random() * this.size / 2 - this.size / 4, this.size / 2), this.size);
             dist = Math.random() * this.size / 2 + this.size / 2;
             nextPoint = Vector2D.create(Math.cos(i) * dist, Math.sin(i) * dist);
@@ -52,9 +52,9 @@ class Asteroid extends BaseComponent {
             this.live = false;
             if (this.splinterSteps > 0) {
                 this.gameInstance.addObject(new Asteroid(this.pos, Vector2D.createRandom(-2, 2, -2, 2),
-                Math.random() * .05 - .025, this.size * .8, this.splinterSteps - 1, this.gameInstance));
+                    Math.random() * .05 - .025, this.size * .8, this.splinterSteps - 1, this.gameInstance));
                 this.gameInstance.addObject(new Asteroid(this.pos, Vector2D.createRandom(-2, 2, -2, 2),
-                Math.random() * .05 - .025, this.size * .8, this.splinterSteps - 1, this.gameInstance));
+                    Math.random() * .05 - .025, this.size * .8, this.splinterSteps - 1, this.gameInstance));
             }
         }
     }
@@ -72,10 +72,11 @@ const createRandomAsteroid = function (gameInstance) {
 
 class Bullet extends BaseComponent {
 
-    constructor(pos, bulletVelocity, angle, color, gameInstance) {
+    constructor(pos, bulletVelocity, angle, parentShip, gameInstance) {
         super(pos, bulletVelocity, 16, 4, angle, gameInstance);
         this.deathTime = this.gameInstance.frameTimer + 200;
-        this.color = color;
+        this.parentShip = parentShip;
+        this.color = parentShip.bulletColor;
 
         this.lines.push(Line.create(Vector2D.create(-this.width / 2, -this.height / 2), Vector2D.create(this.width / 2, -this.height)));
         this.lines.push(Line.create(Vector2D.create(this.width / 2, -this.height / 2), Vector2D.create(this.width / 2, this.height)));
@@ -91,10 +92,26 @@ class Bullet extends BaseComponent {
     }
 }
 
+class Powerup extends BaseComponent {
+    constructor(pos, type, gameInstance) {
+        super(pos, Vector2D.create(0, 0), 10, 10, 0, gameInstance);
+        this.type = type;
+        
+        this.lines.push(Line.create(Vector2D.create(-this.width / 2, -this.height / 2), Vector2D.create(this.width / 2, -this.height / 2)));
+        this.lines.push(Line.create(Vector2D.create(this.width / 2, -this.height / 2), Vector2D.create(this.width / 2, this.height / 2)));
+        this.lines.push(Line.create(Vector2D.create(this.width / 2, this.height / 2), Vector2D.create(-this.width / 2, this.height / 2)));
+        this.lines.push(Line.create(Vector2D.create(-this.width / 2, this.height / 2), Vector2D.create(-this.width / 2, -this.height / 2)));
+    }
+}
+
 class Ship extends BaseComponent {
-    bulletDelay = 20;
+    shotDelay = 20;
+    jumpDelay = 100;
     lastShotTime = 0;
+    lastJumpTime = 0;
+    score = 0;
     keys = [];
+    powerups = [];
 
     constructor(pos, velocity, width, height, angle, bulletColor, wingColor, bodyColor, username, gameInstance) {
         super(pos, velocity, width, height, angle, gameInstance);
@@ -111,9 +128,10 @@ class Ship extends BaseComponent {
     }
 
     hyperjump() {
-        pos = Vector2D.createRandom(0, Constants.width, 0, Constants.height);
+        this.pos = Vector2D.createRandom(0, Constants.width, 0, Constants.height);
         for (var i = 0; i < this.gameInstance.asteroids.length; i++) {
             if (overlap(this.gameInstance.asteroids[i], this)) {
+                this.lastJumpTime = this.gameInstance.frameTimer;
                 this.hyperjump();
                 break;
             }
@@ -125,12 +143,13 @@ class Ship extends BaseComponent {
 
     }
 
-    shoot() {
+    shoot(bulletAngle, distance) {
         this.gameInstance.addObject(
-            new Bullet(Vector2D.create(this.pos.x + Math.cos(this.angle) * (this.width / 2 + 16), this.pos.y + Math.sin(this.angle) * (this.height / 2 + 16)),
-                Vector2D.create(10 * Math.cos(this.angle) + this.velocity.x,
-                    10 * Math.sin(this.angle) + this.velocity.y),
-                this.angle, this.bulletColor, this.gameInstance));
+            new Bullet(Vector2D.create(this.pos.x + Math.cos(bulletAngle) * (this.width / 2 + distance), 
+            this.pos.y + Math.sin(bulletAngle) * (this.height / 2 + distance)),
+                Vector2D.create(10 * Math.cos(bulletAngle) + this.velocity.x,
+                    10 * Math.sin(bulletAngle) + this.velocity.y),
+                bulletAngle, this, this.gameInstance));
         this.lastShotTime = this.gameInstance.frameTimer;
     }
 
@@ -138,6 +157,12 @@ class Ship extends BaseComponent {
         this.keys = [];
         for (let i = pressedKeys.length - 1; i > -1; i--) {
             this.keys[pressedKeys[i]] = true;
+        }
+    }
+
+    destroy() {
+        if (!this.powerups['invincibility']) {
+            super.destroy();
         }
     }
 
@@ -162,12 +187,36 @@ class Ship extends BaseComponent {
             }
         }
 
-        if (this.keys[" "] && this.gameInstance.frameTimer > this.lastShotTime + this.bulletDelay) {
-            this.shoot();
+        if (this.keys[" "] && (this.gameInstance.frameTimer > this.lastShotTime + this.shotDelay
+            || (this.powerups["turbo shot"] && this.gameInstance.frameTimer > this.lastShotTime + this.shotDelay / 5))) {
+            if(this.powerups["triple shot"]) {
+                this.shoot(this.angle - .5, 0);
+                this.shoot(this.angle, 16);
+                this.shoot(this.angle + .5, 0);
+            } else {
+                this.shoot(this.angle, 16);
+            }
         }
         if (this.keys["h"]) {
             if (!this.hyperjumpTimer) {
                 this.hyperjumpTimer = 60;
+            }
+        }
+        if(Constants.debug) {
+            if (this.keys['0']) {
+                this.powerups['invincibility'] = true;
+            }
+            if (this.keys['f']) {
+                this.powerups['turbo shot'] = true;
+            }
+            if (this.keys['r']) {
+                this.powerups['reflection'] = true;
+            }
+            if (this.keys['t']) {
+                this.powerups['triple shot'] = true;
+            }
+            if (this.keys['m']) {
+                this.powerups['minify'] = true;
             }
         }
 
@@ -177,10 +226,13 @@ class Ship extends BaseComponent {
             if (!(--this.hyperjumpTimer)) {
                 this.hyperjump();
             }
+        } else if(this.powerups["minify"]) {
+            this.width = this.trueWidth / 2;
+            this.height = this.trueHeight / 2;
         }
         this.velocity = this.velocity.constMult(.99);
     }
 
 }
 
-module.exports = { Asteroid, Ship, Bullet, createRandomAsteroid };
+module.exports = { Asteroid, Ship, Bullet, Powerup, createRandomAsteroid };
