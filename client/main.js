@@ -1,5 +1,16 @@
 // const Http = new XMLHttpRequest();
 // const url = "http://localhost"
+// EXPANSION IDEAS:
+//  fix stars: J
+//  mini map: J
+//  powerups: S
+//  powerup notification: S
+//  scoring: S
+//  leaderboard: S
+//  kill notification: J
+function map(x, in_min, in_max, out_min, out_max) {
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
 var ws = new WebSocket("ws://192.168.1.128");
 var keys_down = new Set();
 // Benedict Cumberbatch's real name is Bucket Crunderdunder
@@ -19,7 +30,7 @@ ws.onmessage = function (message) {
             asteroidsGame.gameElements.push(new Bullet(bullet.id, new Vector2D(bullet.pos.x, bullet.pos.y), bullet.velocity, bullet.angle, bullet.width, bullet.height, bullet.color));
         });
         msg.ships.forEach(function (ship) {
-            asteroidsGame.gameElements.push(new Trail(new Vector2D(ship.pos.x, ship.pos.y).add(Vector2D.fromAngle(ship.angle).mult(-30))));
+            asteroidsGame.gameElements.push(new Trail(new Vector2D(ship.pos.x, ship.pos.y).add(Vector2D.fromAngle(ship.angle).mult(-ship.height / 2))));
         });
         switch (msg.type) {
             case "join":
@@ -27,6 +38,8 @@ ws.onmessage = function (message) {
                 asteroidsGame.playerShipID = msg.id;
                 asteroidsGame.canvas.width = msg.clientWidth;
                 asteroidsGame.canvas.height = msg.clientHeight;
+                asteroidsGame.clientWidth = msg.clientWidth;
+                asteroidsGame.clientHeight = msg.clientHeight;
                 asteroidsGame.width = msg.width;
                 asteroidsGame.height = msg.height;
                 asteroidsGame.ctx = asteroidsGame.canvas.getContext("2d");
@@ -77,9 +90,9 @@ ws.onmessage = function (message) {
                         console.log("COLLISION ERROR:\n" + collision);
                     }
                 });
-                var ship = msg.ships.find(function (s) { return s.id === asteroidsGame.playerShipID; });
-                if (ship) {
-                    asteroidsGame.playerShipPos = new Vector2D(ship.pos.x, ship.pos.y);
+                var ship_1 = msg.ships.find(function (s) { return s.id === asteroidsGame.playerShipID; });
+                if (ship_1) {
+                    asteroidsGame.playerShipPos = new Vector2D(ship_1.pos.x, ship_1.pos.y);
                 }
                 // asteroidsGame.gameElements.forEach(element => {
                 //     // element.move(new Vector2D(asteroidsGame.playerShipPos.x, asteroidsGame.playerShipPos.y).add(new Vector2D(ship.velocity.x, ship.velocity.y)).mult(-1));
@@ -87,6 +100,9 @@ ws.onmessage = function (message) {
                 //     element.move(new Vector2D(asteroidsGame.canvas.width / 2, asteroidsGame.canvas.height / 2));
                 // });
                 asteroidsGame.move(new Vector2D(asteroidsGame.playerShipPos.x, asteroidsGame.playerShipPos.y).mult(-1).add(new Vector2D(asteroidsGame.canvas.width / 2, asteroidsGame.canvas.height / 2)));
+                if (ship_1 && ship_1.velocity) {
+                    asteroidsGame.stars.forEach(function (e) { return e.move(new Vector2D(-ship_1.velocity.x, -ship_1.velocity.y)); });
+                }
                 asteroidsGame.gameElements.forEach(function (e) {
                     if (e.pos) {
                         e.pos.mod(asteroidsGame.width, asteroidsGame.height);
@@ -98,10 +114,26 @@ ws.onmessage = function (message) {
                 asteroidsGame.stars.forEach(function (e) {
                     e.pos.mod(asteroidsGame.width, asteroidsGame.height);
                 });
+                // console.log(asteroidsGame.stars[0].pos);
                 asteroidsGame.draw();
                 asteroidsGame.move(new Vector2D(asteroidsGame.playerShipPos.x, asteroidsGame.playerShipPos.y).add(new Vector2D(asteroidsGame.canvas.width / 2, asteroidsGame.canvas.height / 2).mult(-1)));
                 msg.ships.forEach(function (ship) {
                     asteroidsGame.drawShip(ship);
+                });
+                asteroidsGame.ctx.fillStyle = "#222";
+                asteroidsGame.ctx.fillRect(asteroidsGame.clientWidth - 200, 0, 200, 200);
+                asteroidsGame.ctx.fillStyle = "#f00";
+                msg.ships.forEach(function (ship) {
+                    var xPos = map(ship.pos.x, 0, asteroidsGame.width, asteroidsGame.clientWidth - 200, asteroidsGame.clientWidth);
+                    var yPos = map(ship.pos.y, 0, asteroidsGame.height, 0, 200);
+                    if (ship.id === asteroidsGame.playerShipID) {
+                        asteroidsGame.ctx.fillStyle = "#55f";
+                        asteroidsGame.ctx.fillRect(xPos, yPos, 10, 10);
+                        asteroidsGame.ctx.fillStyle = "#f00";
+                    }
+                    else {
+                        asteroidsGame.ctx.fillRect(xPos, yPos, 10, 10);
+                    }
                 });
                 break;
         }
@@ -138,7 +170,6 @@ var AsteroidsGame = /** @class */ (function () {
     };
     AsteroidsGame.prototype.move = function (d) {
         this.gameElements.forEach(function (e) { return e.move(d); });
-        this.stars.forEach(function (e) { return e.move(d); });
     };
     AsteroidsGame.prototype.update = function () {
         this.gameElements.forEach(function (e) { return e.update(); });
@@ -146,7 +177,7 @@ var AsteroidsGame = /** @class */ (function () {
     AsteroidsGame.prototype.draw = function () {
         var _this = this;
         asteroidsGame.ctx.fillStyle = "#000";
-        asteroidsGame.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        asteroidsGame.ctx.fillRect(0, 0, asteroidsGame.canvas.width, asteroidsGame.canvas.height);
         asteroidsGame.stars.forEach(function (star) { return star.draw(_this.ctx); });
         asteroidsGame.gameElements.filter(function (e) { return e instanceof Bullet; }).forEach(function (e) { return e.draw(_this.ctx); });
         asteroidsGame.gameElements.filter(function (e) { return e instanceof Asteroid; }).forEach(function (e) { return e.draw(_this.ctx); });
@@ -304,7 +335,7 @@ var Star = /** @class */ (function () {
         this.depth = depth;
     }
     Star.prototype.move = function (d) {
-        this.pos.add(d.mult((this.depth) / 10));
+        this.pos.add(d.copy().mult(1 - (this.depth / 10)));
         // console.log(d);
         // this.pos.add(d);
     };
@@ -398,6 +429,9 @@ var Vector2D = /** @class */ (function () {
         // this.x %= xMax;
         // this.y %= yMax;
         return this;
+    };
+    Vector2D.prototype.copy = function () {
+        return new Vector2D(this.x, this.y);
     };
     return Vector2D;
 }());

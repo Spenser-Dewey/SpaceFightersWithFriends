@@ -3,15 +3,17 @@
 
 
 // EXPANSION IDEAS:
-//  fix stars
-//  mini map
-//  powerups
-//  powerup notification
-//  scoring
-//  leaderboard
-//  kill notification
+//  fix stars: J
+//  mini map: J
+//  powerups: S
+//  powerup notification: S
+//  scoring: S
+//  leaderboard: S
+//  kill notification: J
 
-
+function map(x, in_min, in_max, out_min, out_max) {
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
 
 const ws = new WebSocket("ws://192.168.1.128");
 
@@ -20,7 +22,7 @@ var keys_down: Set<String> = new Set();
 
 ws.onmessage = function (message) {
     if (window.asteroidsGame) {
-        let msg = JSON.p\arse(message.data);
+        let msg = JSON.parse(message.data);
 
         let numNew: number = msg.frameTimer - asteroidsGame.lastFrame;
 
@@ -40,7 +42,7 @@ ws.onmessage = function (message) {
         });
 
         msg.ships.forEach(ship => {
-            asteroidsGame.gameElements.push(new Trail(new Vector2D(ship.pos.x, ship.pos.y).add(Vector2D.fromAngle(ship.angle).mult(-30))));
+            asteroidsGame.gameElements.push(new Trail(new Vector2D(ship.pos.x, ship.pos.y).add(Vector2D.fromAngle(ship.angle).mult(-ship.height / 2))));
         });
 
         switch (msg.type) {
@@ -50,6 +52,9 @@ ws.onmessage = function (message) {
                 asteroidsGame.playerShipID = msg.id;
                 asteroidsGame.canvas.width = msg.clientWidth;
                 asteroidsGame.canvas.height = msg.clientHeight;
+
+                asteroidsGame.clientWidth = msg.clientWidth;
+                asteroidsGame.clientHeight = msg.clientHeight;
 
                 asteroidsGame.width = msg.width;
                 asteroidsGame.height = msg.height;
@@ -123,7 +128,9 @@ ws.onmessage = function (message) {
                 // });
 
                 asteroidsGame.move(new Vector2D(asteroidsGame.playerShipPos.x, asteroidsGame.playerShipPos.y).mult(-1).add(new Vector2D(asteroidsGame.canvas.width / 2, asteroidsGame.canvas.height / 2)));
-
+                if(ship && ship.velocity) {
+                    asteroidsGame.stars.forEach(e => e.move(new Vector2D(-ship.velocity.x, -ship.velocity.y)));
+                }
 
                 asteroidsGame.gameElements.forEach(e => {
                     if (e.pos) {
@@ -138,12 +145,32 @@ ws.onmessage = function (message) {
                     e.pos.mod(asteroidsGame.width, asteroidsGame.height);
                 });
 
+                // console.log(asteroidsGame.stars[0].pos);
+
                 asteroidsGame.draw();
 
                 asteroidsGame.move(new Vector2D(asteroidsGame.playerShipPos.x, asteroidsGame.playerShipPos.y).add(new Vector2D(asteroidsGame.canvas.width / 2, asteroidsGame.canvas.height / 2).mult(-1)));
 
                 msg.ships.forEach(ship => {
                     asteroidsGame.drawShip(ship);
+                });
+
+                asteroidsGame.ctx.fillStyle = "#222";
+                asteroidsGame.ctx.fillRect(asteroidsGame.clientWidth - 200, 0, 200, 200);
+                asteroidsGame.ctx.fillStyle = "#f00";
+
+                msg.ships.forEach(ship => {
+                    let xPos = map(ship.pos.x, 0, asteroidsGame.width, asteroidsGame.clientWidth - 200, asteroidsGame.clientWidth);
+                    let yPos = map(ship.pos.y, 0, asteroidsGame.height, 0, 200);
+
+                    if (ship.id === asteroidsGame.playerShipID) {
+                        asteroidsGame.ctx.fillStyle = "#55f";
+                        asteroidsGame.ctx.fillRect(xPos, yPos, 10, 10);
+                        asteroidsGame.ctx.fillStyle = "#f00";
+                    }
+                    else {
+                        asteroidsGame.ctx.fillRect(xPos, yPos, 10, 10);
+                    }
                 });
 
                 break;
@@ -161,6 +188,8 @@ class AsteroidsGame {
     playerShipPos: Vector2D;
     width: number;
     height: number;
+    clientWidth: number;
+    clientHeight: number;
 
     constructor() {
         let joinMsg = {
@@ -198,7 +227,6 @@ class AsteroidsGame {
 
     move(d) {
         this.gameElements.forEach(e => e.move(d));
-        this.stars.forEach(e => e.move(d));
     }
 
     update() {
@@ -207,7 +235,7 @@ class AsteroidsGame {
 
     draw() {
         asteroidsGame.ctx.fillStyle = "#000";
-        asteroidsGame.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        asteroidsGame.ctx.fillRect(0, 0, asteroidsGame.canvas.width, asteroidsGame.canvas.height);
 
         asteroidsGame.stars.forEach(star => star.draw(this.ctx));
 
@@ -398,7 +426,7 @@ namespace Debris {
 }
 
 class Star {
-    private pos: Vector2D;
+    public pos: Vector2D;
     private depth: number;
 
     constructor(pos: Vector2D, depth: number) {
@@ -407,7 +435,7 @@ class Star {
     }
 
     move(d: Vector2D) {
-        this.pos.add(d.mult((this.depth) / 10));
+        this.pos.add(d.copy().mult(1 - (this.depth / 10)));
         // console.log(d);
         // this.pos.add(d);
     }
@@ -528,5 +556,9 @@ class Vector2D {
         // this.x %= xMax;
         // this.y %= yMax;
         return this;
+    }
+
+    copy() {
+        return new Vector2D(this.x, this.y);
     }
 }
