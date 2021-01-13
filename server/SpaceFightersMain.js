@@ -90,7 +90,6 @@ function checkCollisions() {
       GameState.ships[i].destroy();
       aster.destroy();
       GameState.events.collisions.push({ asteroid: aster, ship: GameState.ships[i] });
-      console.log("DESTRUCTION OF SHIP " + GameState.ships[i].id + " PILOTED BY " + GameState.ships[i].username);
     }
     else if (bullet = GameState.bullets.find(bullet => overlap(bullet, GameState.ships[i]))) {
       bullet.destroy();
@@ -101,7 +100,6 @@ function checkCollisions() {
         GameState.events.collisions.push({ bullet: bullet, ship: GameState.ships[i] });
         if (!GameState.ships[i].live) {
           bullet.parentShip.score++;
-          console.log("DESTRUCTION OF SHIP " + GameState.ships[i].id + " PILOTED BY " + GameState.ships[i].username);
         }
       }
     } else if (powerup = GameState.powerups.find(powerup => overlap(powerup, GameState.ships[i]))) {
@@ -175,7 +173,6 @@ function readMessage(data, socket) {
         if (data.keys[i] == "r") {
           let deadShip = GameState.deadShips.find(ship => ship.id == data.id);
           if (deadShip) {
-            console.log("Ship " + deadShip.id + " REVIVED piloted by " + deadShip.pilot);
             deadShip.live = true;
             GameState.ships.push(deadShip);
           }
