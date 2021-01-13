@@ -190,9 +190,9 @@ class Ship extends BaseComponent {
         if (this.keys[" "] && (this.gameInstance.frameTimer > this.lastShotTime + this.shotDelay
             || (this.powerups["turbo shot"] && this.gameInstance.frameTimer > this.lastShotTime + this.shotDelay / 5))) {
             if(this.powerups["triple shot"]) {
-                this.shoot(this.angle - .5, 0);
+                this.shoot(this.angle - .5, 8);
                 this.shoot(this.angle, 16);
-                this.shoot(this.angle + .5, 0);
+                this.shoot(this.angle + .5, 8);
             } else {
                 this.shoot(this.angle, 16);
             }

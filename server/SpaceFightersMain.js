@@ -66,7 +66,7 @@ const GameState = {
   addAsteroids() {
     for (var i = this.asteroids.length; i < Constants.minAsteroids; i++) {
       let newAsteroid = createRandomAsteroid(this);
-      if (!GameState.ships.find(playerShip => playerShip.pos.manDistanceTo(newAsteroid) < 200)) {
+      if (!GameState.ships.find(playerShip => playerShip.pos.manDistanceTo(newAsteroid.pos))) {
         this.asteroids.push(newAsteroid);
       }
     }
@@ -94,7 +94,8 @@ function checkCollisions() {
     else if (bullet = GameState.bullets.find(bullet => overlap(bullet, GameState.ships[i]))) {
       bullet.destroy();
       if (GameState.ships[i].powerups["reflection"]) {
-        GameState.addObject(new Bullet(bullet.pos, bullet.velocity.constMult(-1), bullet.angle, bullet.parentShip, bullet.gameInstance));
+        let newVel = bullet.velocity.constMult(-1);
+        GameState.addObject(new Bullet(Vector2D.create(bullet.pos.x + newVel.x * 2, bullet.pos.y + newVel.y * 2), newVel, bullet.angle, bullet.parentShip, bullet.gameInstance));
       } else {
         GameState.ships[i].destroy();
         GameState.events.collisions.push({ bullet: bullet, ship: GameState.ships[i] });
