@@ -8,6 +8,7 @@
             width: 100%;
             height: 100%;
         }
+
         #preview {
             width: 400px;
             height: 200px;
@@ -20,31 +21,31 @@
         }
 
         button:nth-child(1) {
-            background-color: red;
+            background-color: #5b5496;
         }
 
         button:nth-child(2) {
-            background-color: orange;
+            background-color: #8f2839;
         }
 
         button:nth-child(3) {
-            background-color: yellow;
+            background-color: #e0d975;
         }
 
         button:nth-child(4) {
-            background-color: green;
+            background-color: #2f67a8;
         }
 
         button:nth-child(5) {
-            background-color: blue;
+            background-color: #dddfe0;
         }
 
         button:nth-child(6) {
-            background-color: violet;
+            background-color: #6a9e6d;
         }
 
         button:nth-child(7) {
-            background-color: white;
+            background-color: #c78752;
         }
 
         #thebutton {
@@ -107,15 +108,16 @@
         <button id="thebutton" onClick="onTheButton()">The Button</button>
     </div>
 
+    <script data-main="scripts/main" src="require.js"></script>
     <script>
         canvas = document.getElementById("preview");
         canvas.width = 400
         canvas.height = 200
         ctx = canvas.getContext("2d");
 
-        wingColor = "red";
-        bodyColor = "red";
-        bulletColor = "red";
+        wingColor = "#dddfe0";
+        bodyColor = "#dddfe0";
+        bulletColor = "#dddfe0";
         username = "";
 
         setInterval(drawShip, 50);
@@ -210,7 +212,7 @@
             document.body.appendChild(c);
 
             canvas = document.getElementById("canvas");
-            
+
             canvas.style.margin = "0";
             canvas.style.position = "absolute";
             canvas.style.width = "100%";
