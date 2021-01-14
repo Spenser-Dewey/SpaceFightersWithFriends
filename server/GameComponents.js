@@ -122,6 +122,11 @@ class Ship extends BaseComponent {
         this.wingColor = wingColor;
         this.bodyColor = bodyColor;
 
+        this.setLines();
+    }
+
+    setLines() {
+        this.lines = [];
         this.lines.push(Line.create(Vector2D.create(-this.width / 2, -this.height / 2), Vector2D.create(this.width / 2, 0)));
         this.lines.push(Line.create(Vector2D.create(this.width / 2, 0), Vector2D.create(-this.width / 2, this.height / 2)));
         this.lines.push(Line.create(Vector2D.create(-this.width / 2, this.height / 2), Vector2D.create(-this.width / 2, -this.height / 2)));
@@ -138,6 +143,7 @@ class Ship extends BaseComponent {
             this.width = this.trueWidth / 2;
             this.height = this.trueHeight / 2;
         }
+        this.setLines();
     }
 
     shoot(bulletAngle, distance) {
@@ -187,11 +193,11 @@ class Ship extends BaseComponent {
         if (this.keys[" "] && (this.gameInstance.frameTimer > this.lastShotTime + this.shotDelay
             || (this.powerups["turbo shot"] && this.gameInstance.frameTimer > this.lastShotTime + this.shotDelay / 2))) {
             if (this.powerups["triple shot"]) {
-                this.shoot(this.angle - .5, 25);
-                this.shoot(this.angle, 30);
-                this.shoot(this.angle + .5, 25);
+                this.shoot(this.angle - .5, 15);
+                this.shoot(this.angle, 25);
+                this.shoot(this.angle + .5, 15);
             } else {
-                this.shoot(this.angle, 30);
+                this.shoot(this.angle, 25);
             }
         }
         if (this.keys["h"]) {
@@ -223,15 +229,18 @@ class Ship extends BaseComponent {
             if (!(--this.hyperjumpTimer)) {
                 this.hyperjump();
             }
+            this.setLines();
         } else if (this.lastJumpTime == this.gameInstance.frameTimer - 1) {
             this.velocity.x = 0;
             this.velocity.y = 0;
         } else if (this.powerups["minify"]) {
             this.width = this.trueWidth / 2;
             this.height = this.trueHeight / 2;
-        } else {
+            this.setLines();
+        } else if(this.width != this.trueWidth) {
             this.width = this.trueWidth;
             this.height = this.trueHeight;
+            this.setLines();
         }
 
         for (let i = Constants.powerups.length - 1; i > -1; i--) {

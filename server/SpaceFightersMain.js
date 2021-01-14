@@ -99,9 +99,9 @@ function checkCollisions() {
         GameState.addObject(new Bullet(Vector2D.create(bullet.pos.x + newVel.x * 2, bullet.pos.y + newVel.y * 2), newVel, bullet.angle, bullet.parentShip, bullet.gameInstance));
       } else {
         GameState.ships[i].destroy();
-        GameState.events.collisions.push({ bullet: bullet, ship: GameState.ships[i] });
         if (!GameState.ships[i].live) {
           bullet.parentShip.score += 25;
+          GameState.events.collisions.push({ bullet: bullet, ship: GameState.ships[i] });
         }
       }
     } else if (powerup = GameState.powerups.find(powerup => overlap(powerup, GameState.ships[i]))) {

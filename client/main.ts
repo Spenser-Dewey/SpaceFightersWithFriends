@@ -113,6 +113,7 @@ function startWebSocket() {
                             asteroidsGame.gameElements.push(new Debris(new Vector2D(collision.bullet.pos.x, collision.bullet.pos.y), collision.bullet.angle, 30, "#334243"));
                         }
                         else {
+                            console.log("COLLISION ERROR");
                         }
                     });
 
@@ -484,7 +485,7 @@ class Debris {
     }
 
     modAll() {
-        this.chunks.forEach(chunk => chunk.pos.mod(this.width, this.height));
+        this.chunks.forEach(chunk => chunk.pos.mod(asteroidsGame.width, asteroidsGame.height));
     }
 
     move(d: Vector2D) {

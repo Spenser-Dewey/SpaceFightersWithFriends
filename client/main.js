@@ -88,6 +88,7 @@ function startWebSocket() {
                             asteroidsGame.gameElements.push(new Debris(new Vector2D(collision.bullet.pos.x, collision.bullet.pos.y), collision.bullet.angle, 30, "#334243"));
                         }
                         else {
+                            console.log("COLLISION ERROR");
                         }
                     });
                     var ship_1 = msg.ships.find(function (s) { return s.id === asteroidsGame.playerShipID; });
@@ -380,8 +381,7 @@ var Debris = /** @class */ (function () {
         this.color = color;
     }
     Debris.prototype.modAll = function () {
-        var _this = this;
-        this.chunks.forEach(function (chunk) { return chunk.pos.mod(_this.width, _this.height); });
+        this.chunks.forEach(function (chunk) { return chunk.pos.mod(asteroidsGame.width, asteroidsGame.height); });
     };
     Debris.prototype.move = function (d) {
         this.chunks.forEach(function (chunk) { return chunk.move(d); });
