@@ -1,10 +1,11 @@
-const width = 5000;
-const height = 5000;
-const minAsteroids = 5;
+const width = 2000;
+const height = 1600;
+const minAsteroids = 15;
 const clientWidth = 1500;
 const clientHeight = 800;
-const powerupProbability = .01;
-const maxPowerups = 15;
+const powerupProbability = .001;
+const maxPowerups = 5;
+const powerupTime = 500;
 const powerups = [
     "invincibility",
     "reflection",
@@ -12,6 +13,6 @@ const powerups = [
     "triple shot",
     "minify"
 ]
-const debug = true;
+const debug = false;
 
-module.exports = {width, height, minAsteroids, clientWidth, clientHeight, powerupProbability, maxPowerups, powerups, debug}
+module.exports = {width, height, minAsteroids, clientWidth, clientHeight, powerupProbability, maxPowerups, powerups, powerupTime, debug}

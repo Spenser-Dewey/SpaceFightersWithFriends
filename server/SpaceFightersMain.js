@@ -13,8 +13,8 @@ const GameState = {
   powerups: [],
 
   start() {
-    this.addAsteroids();
     this.events = { asteroids: [], bullets: [], collisions: [], ships: [], deaths: [], frameTimer: 0 };
+    this.addAsteroids();
 
     this.interval = setInterval(() => this.update(), 20);
   },
@@ -26,6 +26,7 @@ const GameState = {
     this.updateElement(this.asteroids);
     this.updateElement(this.bullets);
     this.updateElement(this.ships);
+    this.updateElement(this.powerups);
 
     this.addAsteroids();
     this.addPowerup();
@@ -66,8 +67,8 @@ const GameState = {
   addAsteroids() {
     for (var i = this.asteroids.length; i < Constants.minAsteroids; i++) {
       let newAsteroid = createRandomAsteroid(this);
-      if (!GameState.ships.find(playerShip => playerShip.pos.manDistanceTo(newAsteroid.pos))) {
-        this.asteroids.push(newAsteroid);
+      if (!GameState.ships.find(playerShip => playerShip.pos.manDistanceTo(newAsteroid.pos) < 600)) {
+        this.addObject(newAsteroid);
       }
     }
   },
@@ -100,11 +101,13 @@ function checkCollisions() {
         GameState.ships[i].destroy();
         GameState.events.collisions.push({ bullet: bullet, ship: GameState.ships[i] });
         if (!GameState.ships[i].live) {
-          bullet.parentShip.score++;
+          bullet.parentShip.score += 25;
         }
       }
     } else if (powerup = GameState.powerups.find(powerup => overlap(powerup, GameState.ships[i]))) {
-
+      powerup.destroy();
+      GameState.ships[i].powerups[powerup.type] = Constants.powerupTime;
+      GameState.events.collisions.push({ powerup: powerup, ship: GameState.ships[i] });
     }
   }
   for (let i = GameState.bullets.length - 1; i > -1; i--) {
@@ -112,6 +115,9 @@ function checkCollisions() {
       GameState.bullets[i].destroy();
       aster.destroy();
       GameState.events.collisions.push({ asteroid: aster, bullet: GameState.bullets[i] });
+      if (!aster.live) {
+        GameState.bullets[i].parentShip.score += 1;
+      }
     }
   }
 }
@@ -134,7 +140,6 @@ server.on('connection', function (socket) {
     readMessage(JSON.parse(msg), socket);
   });
 
-  // When a socket closes, or disconnects, remove it from the array.
   socket.on('close', function () {
     sockets = sockets.filter(s => s !== socket);
   });
@@ -142,17 +147,30 @@ server.on('connection', function (socket) {
 
 function sendEvents() {
   GameState.events.type = "update";
+  if (Constants.debug) {
+    GameState.events.dbugShapes = GameState.asteroids.map((aster) => {
+      return { lines: aster.lines, pos: aster.pos, angle: aster.angle };
+    }).concat(
+      GameState.ships.map((ship) => {
+        return { lines: ship.lines, pos: ship.pos, angle: ship.angle };
+    })).concat(
+      GameState.bullets.map((bullet) => {
+        return { lines: bullet.lines, pos: bullet.pos, angle: bullet.angle };
+      }));
+  }
   sockets.forEach(socket => socket.send(JSON.stringify(GameState.events, stringifyData)));
 }
 
 function readMessage(data, socket) {
   if (data.type == "join") {
     const gameData = {};
-    const newShip = new Ship(Vector2D.createRandom(0, Constants.clientWidth, 0, Constants.clientHeight),
+    const newShip = new Ship(Vector2D.createRandom(0, Constants.width, 0, Constants.height),
       Vector2D.create(0, 0), 60, 60, 0, data.bulletColor, data.wingColor, data.bodyColor, data.username, GameState);
+    newShip.powerups.invincibility = 100
     gameData.asteroids = GameState.asteroids;
+    gameData.powerups = GameState.powerups;
     gameData.bullets = GameState.bullets;
-    gameData.frameTimer = GameState.frameTimer + 1;
+    gameData.frameTimer = GameState.frameTimer;
     gameData.type = "join";
     gameData.clientWidth = Constants.clientWidth;
     gameData.clientHeight = Constants.clientHeight;
@@ -174,6 +192,9 @@ function readMessage(data, socket) {
         if (data.keys[i] == "r") {
           let deadShip = GameState.deadShips.find(ship => ship.id == data.id);
           if (deadShip) {
+            deadShip.powerups = {invincibility: 100};
+            deadShip.hyperjump();
+            deadShip.score = 0;
             deadShip.live = true;
             GameState.ships.push(deadShip);
           }

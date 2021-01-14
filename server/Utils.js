@@ -175,7 +175,7 @@ function stringifyData(key, value) {
         returnArr.push(value[i].p1);
       }
       return returnArr;
-    } else if (key == "gameInstance" || key == "splinterSteps" || key == "size") {
+    } else if (key == "gameInstance" ||  key == "size") {
       return undefined;
     } else if (key == "ships") {
       return JSON.parse(JSON.stringify(value, stringifyShip));
@@ -187,8 +187,8 @@ function stringifyData(key, value) {
   }
   
   function stringifyShip(key, value) {
-    if (key == "lines" || key == "bulletColor" || key == "keys" || key == "trueWidth" || key == "trueHeight"
-      || key == "live" || key == "gameInstance") {
+    if (key == "bulletColor" || key == "keys" || key == "trueWidth" || key == "trueHeight"
+      || key == "live" || key == "gameInstance" || key == "lines") {
       return undefined;
     } else {
       return value;
