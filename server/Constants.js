@@ -1,5 +1,5 @@
-const width = 2000;
-const height = 1600;
+const width = 3000;
+const height = 3000;
 const minAsteroids = 15;
 const clientWidth = 1500;
 const clientHeight = 800;

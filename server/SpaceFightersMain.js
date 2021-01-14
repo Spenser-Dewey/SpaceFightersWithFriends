@@ -193,6 +193,7 @@ function readMessage(data, socket) {
           let deadShip = GameState.deadShips.find(ship => ship.id == data.id);
           if (deadShip) {
             deadShip.powerups = {invincibility: 100};
+            deadShip.setKeys([]);
             deadShip.hyperjump();
             deadShip.score = 0;
             deadShip.live = true;
