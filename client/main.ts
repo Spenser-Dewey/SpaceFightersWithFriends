@@ -1,7 +1,3 @@
-// const Http = new XMLHttpRequest();
-// const url = "http://localhost"
-
-
 // EXPANSION IDEAS:
 //  fix stars: S
 //  mini map: J
@@ -23,8 +19,6 @@ function map(x, in_min, in_max, out_min, out_max) {
 var keys_down: Set<String> = new Set();
 
 function startWebSocket() {
-    console.log("CONNECTION OPENED");
-
     window.ws = new WebSocket("ws://192.168.1.128");
 
     ws.onmessage = function (message) {
@@ -75,6 +69,20 @@ function startWebSocket() {
                         asteroidsGame.stars.push(new Star(new Vector2D(Math.random() * asteroidsGame.width, Math.random() * asteroidsGame.height), Math.random() * 5 + 1));
                     }
 
+                    for (let i: number = 0; i < msg.powerups.length; i++) {
+                        let powerup = msg.powerups[i];
+                        asteroidsGame.gameElements.push(new Powerup(powerup.id, new Vector2D(powerup.pos.x, powerup.pos.y), new Vector2D(powerup.velocity.x, powerup.velocity.y), powerup.lines, powerup.width, powerup.height, powerup.type));
+                    }
+
+                    msg.bullets.forEach(bullet => {
+                        let bulletPos = new Vector2D(bullet.pos.x, bullet.pos.y);
+
+                        if (bulletPos.onscreen())
+                            asteroidsGame.fire.cloneNode().play();
+
+                        asteroidsGame.gameElements.push(new Bullet(bullet.id, bulletPos, bullet.velocity, bullet.angle, bullet.width, bullet.height, bullet.color))
+                    });
+
                     setInterval(function () {
                         asteroidsGame.sendData(JSON.stringify({
                             type: "update",
@@ -100,20 +108,62 @@ function startWebSocket() {
                     }
 
                     msg.collisions.forEach(collision => {
-                        if (!collision.bullet) {
-                            // let asteroid:Asteroid = asteroidsGame.gameElements.find(e => e.id === collision.asteroid);
-                            // let ship = msg.ships.find(e => e.id === collision.ship);
-                            asteroidsGame.gameElements.push(new Debris(new Vector2D(collision.ship.pos.x, collision.ship.pos.y), collision.ship.angle, 30, "#b06000"));
+                        if (collision.ship && collision.powerup) {
+                        }
+                        else if (!collision.bullet) {
+                            if (new Vector2D(collision.asteroid.pos.x, collision.asteroid.pos.y).onscreen()) {
+                                asteroidsGame.bangLarge.cloneNode().play();
+                            }
+
+                            if (!collision.ship.powerups.invincibility) {
+                                let killee = collision.ship.username;
+
+                                asteroidsGame.killNotificationText = killee + " ran into an asteroid";
+                                asteroidsGame.killNotificationTicksLeft = AsteroidsGame.KILL_NOTIFICATION_TICKS;
+
+                                asteroidsGame.gameElements.push(new Debris(new Vector2D(collision.ship.pos.x, collision.ship.pos.y), collision.ship.angle, 30, "#b06000"));
+                            }
+
                             asteroidsGame.gameElements.push(new Debris(new Vector2D(collision.asteroid.pos.x, collision.asteroid.pos.y), collision.ship.angle, 30, "#334243"));
                         }
                         else if (!collision.asteroid) {
+                            console.log(collision.ship);
+                            if (!collision.ship.powerups.invincibility) {
+                                let killer = collision.bullet.parentShip.username;
+                                let killee = collision.ship.username;
+
+                                if (collision.bullet.parentShip.id === collision.ship.id) {
+                                    asteroidsGame.killNotificationText = killee + " died on their own bullet";
+                                }
+                                else {
+                                    asteroidsGame.killNotificationText = killer + " destroyed " + killee;
+                                }
+                                asteroidsGame.killNotificationTicksLeft = AsteroidsGame.KILL_NOTIFICATION_TICKS;
+                            }
+
+                            if (new Vector2D(collision.bullet.pos.x, collision.bullet.pos.y).onscreen()) {
+                                asteroidsGame.bangLarge.cloneNode().play();
+                            }
+
                             asteroidsGame.gameElements.push(new Debris(new Vector2D(collision.ship.pos.x, collision.ship.pos.y), collision.ship.angle, 30, "#b06000"));
                         }
                         else if (!collision.ship) {
+                            if (new Vector2D(collision.asteroid.pos.x, collision.asteroid.pos.y).onscreen()) {
+
+                                if (collision.asteroid.splinterSteps === 2) {
+                                    asteroidsGame.bangLarge.cloneNode().play();
+                                }
+                                else if (collision.asteroid.splinterSteps === 1) {
+                                    asteroidsGame.bangMedium.cloneNode().play();
+                                }
+                                else if (collision.asteroid.splinterSteps === 0) {
+                                    asteroidsGame.bangSmall.cloneNode().play();
+                                }
+                            }
                             asteroidsGame.gameElements.push(new Debris(new Vector2D(collision.bullet.pos.x, collision.bullet.pos.y), collision.bullet.angle, 30, "#334243"));
                         }
                         else {
-                            console.log("COLLISION ERROR");
+                            console.log("COLLISION ERROR:\n" + collision);
                         }
                     });
 
@@ -124,15 +174,21 @@ function startWebSocket() {
                         asteroidsGame.playerShipScore = ship.score;
                         asteroidsGame.deathScreen = false;
                     }
-                    
+
                     for (let i: number = 0; i < msg.powerups.length; i++) {
                         let powerup = msg.powerups[i];
                         asteroidsGame.gameElements.push(new Powerup(powerup.id, new Vector2D(powerup.pos.x, powerup.pos.y), new Vector2D(powerup.velocity.x, powerup.velocity.y), powerup.lines, powerup.width, powerup.height, powerup.type));
                     }
+
                     msg.bullets.forEach(bullet => {
-                        asteroidsGame.gameElements.push(new Bullet(bullet.id, new Vector2D(bullet.pos.x, bullet.pos.y), bullet.velocity, bullet.angle, bullet.width, bullet.height, bullet.color))
+                        let bulletPos = new Vector2D(bullet.pos.x, bullet.pos.y);
+
+                        if (bulletPos.onscreen())
+                            asteroidsGame.fire.cloneNode().play();
+
+                        asteroidsGame.gameElements.push(new Bullet(bullet.id, bulletPos, bullet.velocity, bullet.angle, bullet.width, bullet.height, bullet.color))
                     });
-        
+
 
                     asteroidsGame.move(new Vector2D(asteroidsGame.playerShipPos.x, asteroidsGame.playerShipPos.y).mult(-1).add(new Vector2D(asteroidsGame.canvas.width / 2, asteroidsGame.canvas.height / 2)));
                     if (ship && ship.velocity) {
@@ -172,8 +228,8 @@ function startWebSocket() {
                     asteroidsGame.ctx.fillStyle = "#f00";
 
                     msg.ships.forEach(ship => {
-                        let xPos = map(ship.pos.x, 0, asteroidsGame.width, asteroidsGame.clientWidth - 200, asteroidsGame.clientWidth);
-                        let yPos = map(ship.pos.y, 0, asteroidsGame.height, 0, 200);
+                        let xPos = map(ship.pos.x, 0, asteroidsGame.width, asteroidsGame.clientWidth - 205, asteroidsGame.clientWidth - 5);
+                        let yPos = map(ship.pos.y, 0, asteroidsGame.height, -5, 195);
 
                         if (ship.id === asteroidsGame.playerShipID) {
                             asteroidsGame.ctx.fillStyle = "#55f";
@@ -196,9 +252,9 @@ function startWebSocket() {
                         asteroidsGame.ctx.textAlign = "left";
                         asteroidsGame.ctx.fillText(msg.ships[i - 1].username, 0, 20 * i);
                         asteroidsGame.ctx.textAlign = "right";
-                        asteroidsGame.ctx.fillText(msg.ships[i - 1].score, 200, 20 * i);
+                        asteroidsGame.ctx.fillText(msg.ships[i - 1].score, 300, 20 * i);
                         if (i % 2 == 0) { asteroidsGame.ctx.fillStyle = "#aaa4" } else { asteroidsGame.ctx.fillStyle = "#3334" }
-                        asteroidsGame.ctx.fillRect(0, 20 * i, 200, 20);
+                        asteroidsGame.ctx.fillRect(0, 20 * i, 300, 20);
                     }
 
                     break;
@@ -226,7 +282,21 @@ class AsteroidsGame {
     clientHeight: number;
     deathScreen: boolean;
 
+    bangLarge: HTMLAudioElement;
+    bangMedium: HTMLAudioElement;
+    bangSmall: HTMLAudioElement;
+    fire: HTMLAudioElement;
+
+    static readonly KILL_NOTIFICATION_TICKS: number = 250;
+    killNotificationTicksLeft: number;
+    killNotificationText: string = "";
+
     constructor() {
+        this.bangLarge = document.getElementById("bangLarge");
+        this.bangMedium = document.getElementById("bangMedium");
+        this.bangSmall = document.getElementById("bangSmall");
+        this.fire = document.getElementById("fire");
+
         let joinMsg = {
             type: "join",
             username: window.username,
@@ -243,8 +313,8 @@ class AsteroidsGame {
         this.stars = [];
 
         function logKeyData(e, isPressed) {
-            if (isPressed) keys_down.add(e.key);
-            else keys_down.delete(e.key);
+            if (isPressed) keys_down.add(e.key.toLowerCase());
+            else keys_down.delete(e.key.toLowerCase());
         }
 
         window.addEventListener("keydown", function (e) {
@@ -262,11 +332,11 @@ class AsteroidsGame {
                 let y = e.clientY - rect.top;
                 x = map(x, 0, asteroidsGame.canvas.clientWidth, 0, asteroidsGame.width);
                 y = map(y, 0, asteroidsGame.canvas.clientHeight, 0, asteroidsGame.height);
-                
-                if(x > asteroidsGame.width / 2 - 200 && x < asteroidsGame.width / 2 + 200) {
-                    if(y > asteroidsGame.height / 4 && y < asteroidsGame.height / 2) {
-                        ws.send(JSON.stringify({id: asteroidsGame.playerShipID, type: "update", keys: ["r"]}));
-                    } else if(y > asteroidsGame.height / 2 + 25 && y < 3 * asteroidsGame.height / 4 + 25) {
+
+                if (x > asteroidsGame.width / 2 - 200 && x < asteroidsGame.width / 2 + 200) {
+                    if (y > asteroidsGame.height / 4 && y < asteroidsGame.height / 2) {
+                        ws.send(JSON.stringify({ id: asteroidsGame.playerShipID, type: "update", keys: ["r"] }));
+                    } else if (y > asteroidsGame.height / 2 + 25 && y < 3 * asteroidsGame.height / 4 + 25) {
                         location.reload();
                     }
                 }
@@ -283,6 +353,12 @@ class AsteroidsGame {
     }
 
     update() {
+        this.killNotificationTicksLeft = Math.max(this.killNotificationTicksLeft - 1, 0);
+
+        if (this.killNotificationTicksLeft === 0) {
+            this.killNotificationText = "";
+        }
+
         this.gameElements.forEach(e => e.update());
     }
 
@@ -297,6 +373,12 @@ class AsteroidsGame {
         this.gameElements.filter(e => e instanceof Debris).forEach(e => e.draw(this.ctx));
         this.gameElements.filter(e => e instanceof Trail).forEach(e => e.draw(this.ctx));
         this.gameElements.filter(e => e instanceof Powerup).forEach(e => e.draw(this.ctx));
+
+        this.ctx.fillStyle = "#FFF";
+        this.ctx.textAlign = "center";
+        this.ctx.font = "30px Arial";
+
+        this.ctx.fillText(this.killNotificationText, this.clientWidth / 2, this.clientHeight * 5 / 6);
 
         if (this.deathScreen) {
             this.drawDeathScreen();
@@ -355,7 +437,7 @@ class AsteroidsGame {
         this.ctx.fillStyle = "#FFF";
         this.ctx.textAlign = "center";
         this.ctx.font = "20px Arial";
-        this.ctx.fillText(ship.username, 0, -45);
+        this.ctx.fillText(ship.username, 0, -55);
 
         this.ctx.rotate(ship.angle);
 
@@ -801,5 +883,10 @@ class Vector2D {
 
     copy() {
         return new Vector2D(this.x, this.y);
+    }
+
+    onscreen() {
+        return Math.abs(this.x - asteroidsGame.playerShipPos.x) < (75 + (asteroidsGame.clientWidth / 2)) &&
+            Math.abs(this.y - asteroidsGame.playerShipPos.y) < (75 + (asteroidsGame.clientHeight / 2));
     }
 }

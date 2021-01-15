@@ -1,17 +1,18 @@
-const width = 3000;
-const height = 3000;
-const minAsteroids = 15;
+const width = 2000;
+const height = 1200;
+const minAsteroids = 2;
 const clientWidth = 1500;
 const clientHeight = 800;
-const powerupProbability = .001;
-const maxPowerups = 5;
-const powerupTime = 500;
+const powerupProbability = .01;
+const maxPowerups = 15;
+const powerupTime = 400;
 const powerups = [
     "invincibility",
     "reflection",
-    "turbo shot",
     "triple shot",
-    "minify"
+    // "minify",
+    "asteroid shot",
+    "turbo shot"
 ]
 const debug = false;
 

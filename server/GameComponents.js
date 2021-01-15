@@ -106,7 +106,7 @@ class Powerup extends BaseComponent {
 
 class Ship extends BaseComponent {
     shotDelay = 20;
-    jumpDelay = 100;
+    jumpDelay = 400;
     lastShotTime = 0;
     lastJumpTime = 0;
     score = 0;
@@ -133,8 +133,14 @@ class Ship extends BaseComponent {
     }
 
     hyperjump() {
+        this.hyperjumpTimer = 0;
         this.velocity = Vector2D.createRandom(-10000, 10000, -10000, 10000);
         this.lastJumpTime = this.gameInstance.frameTimer;
+        if (this.powerups.invincibility) {
+            this.powerups.invincibility = Math.max(this.powerups.invincibility, 100);
+        } else {
+            this.powerups.invincibility = 100;
+        }
 
         if (!this.powerups["minify"]) {
             this.width = this.trueWidth;
@@ -147,12 +153,23 @@ class Ship extends BaseComponent {
     }
 
     shoot(bulletAngle, distance) {
-        this.gameInstance.addObject(
-            new Bullet(Vector2D.create(this.pos.x + Math.cos(bulletAngle) * (this.width / 2 + distance),
-                this.pos.y + Math.sin(bulletAngle) * (this.height / 2 + distance)),
-                Vector2D.create(20 * Math.cos(bulletAngle) + this.velocity.x,
-                    20 * Math.sin(bulletAngle) + this.velocity.y),
-                bulletAngle, this, this.gameInstance));
+        if (this.powerups['asteroid shot']) {
+            distance *= 5;
+            this.gameInstance.addObject(
+                new Asteroid(Vector2D.create(this.pos.x + Math.cos(bulletAngle) * (this.width / 2 + distance),
+                    this.pos.y + Math.sin(bulletAngle) * (this.height / 2 + distance)),
+                    Vector2D.create(2 * Math.cos(bulletAngle) + this.velocity.x,
+                        2 * Math.sin(bulletAngle) + this.velocity.y),
+                    Math.random() * .02 - .01, 80, 3, this.gameInstance));
+        } else {
+            this.gameInstance.addObject(
+                new Bullet(Vector2D.create(this.pos.x + Math.cos(bulletAngle) * (this.width / 2 + distance),
+                    this.pos.y + Math.sin(bulletAngle) * (this.height / 2 + distance)),
+                    Vector2D.create(20 * Math.cos(bulletAngle) + this.velocity.x,
+                        20 * Math.sin(bulletAngle) + this.velocity.y),
+                    bulletAngle, this, this.gameInstance));
+        }
+
         this.lastShotTime = this.gameInstance.frameTimer;
     }
 
@@ -171,31 +188,27 @@ class Ship extends BaseComponent {
 
     update() {
         super.update();
-
-        if (this.keys["w"] || this.keys["s"] || this.keys["d"] || this.keys["a"]) {
-
-            if (this.keys["w"]) {
-                this.velocity.x += .1 * Math.cos(this.angle);
-                this.velocity.y += .1 * Math.sin(this.angle);
-            }
-            if (this.keys["s"]) {
-                this.velocity.x += -.1 * Math.cos(this.angle);
-                this.velocity.y += -.1 * Math.sin(this.angle);
-            }
-            if (this.keys["a"]) {
-                this.angle -= .07;
-            }
-            if (this.keys["d"]) {
-                this.angle += .07;
-            }
+        if (this.keys["w"] || this.keys["arrowup"]) {
+            this.velocity.x += .1 * Math.cos(this.angle);
+            this.velocity.y += .1 * Math.sin(this.angle);
+        }
+        if (this.keys["s"] || this.keys["arrowdown"]) {
+            this.velocity.x += -.1 * Math.cos(this.angle);
+            this.velocity.y += -.1 * Math.sin(this.angle);
+        }
+        if (this.keys["a"] || this.keys["arrowleft"]) {
+            this.angle -= .07;
+        }
+        if (this.keys["d"] || this.keys["arrowright"]) {
+            this.angle += .07;
         }
 
-        if (this.keys[" "] && (this.gameInstance.frameTimer > this.lastShotTime + this.shotDelay
-            || (this.powerups["turbo shot"] && this.gameInstance.frameTimer > this.lastShotTime + this.shotDelay / 2))) {
+        let powerShotDelay = (1 + 2 * !!this.powerups["asteroid shot"]) * this.shotDelay / ((!!this.powerups["turbo shot"]) + 1);
+        if (this.keys[" "] && (this.gameInstance.frameTimer > this.lastShotTime + powerShotDelay)) {
             if (this.powerups["triple shot"]) {
-                this.shoot(this.angle - .5, 15);
-                this.shoot(this.angle, 25);
-                this.shoot(this.angle + .5, 15);
+                this.shoot(this.angle - .5, 25);
+                this.shoot(this.angle, 30);
+                this.shoot(this.angle + .5, 25);
             } else {
                 this.shoot(this.angle, 25);
             }
@@ -221,6 +234,9 @@ class Ship extends BaseComponent {
             if (this.keys['m']) {
                 this.powerups['minify'] = Constants.powerupTime;
             }
+            if (this.keys['q']) {
+                this.powerups['asteroid shot'] = Constants.powerupTime;
+            }
         }
 
         if (this.hyperjumpTimer) {
@@ -237,7 +253,7 @@ class Ship extends BaseComponent {
             this.width = this.trueWidth / 2;
             this.height = this.trueHeight / 2;
             this.setLines();
-        } else if(this.width != this.trueWidth) {
+        } else if (this.width != this.trueWidth) {
             this.width = this.trueWidth;
             this.height = this.trueHeight;
             this.setLines();

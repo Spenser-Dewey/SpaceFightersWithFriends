@@ -1,6 +1,6 @@
 const { Asteroid, Ship, Bullet, Powerup, createRandomAsteroid } = require('./GameComponents');
 const Constants = require('./Constants');
-const { Vector2D, overlap, stringifyData, stringifyShip, stringifyBullet } = require('./Utils');
+const { Vector2D, overlap, stringifyData, } = require('./Utils');
 
 const GameState = {
   frameTimer: 0,
@@ -23,9 +23,9 @@ const GameState = {
     this.frameTimer++;
     this.events = { asteroids: [], bullets: [], powerups: [], collisions: [], deaths: [], frameTimer: this.frameTimer };
 
-    this.updateElement(this.asteroids);
     this.updateElement(this.bullets);
     this.updateElement(this.ships);
+    this.updateElement(this.asteroids);
     this.updateElement(this.powerups);
 
     this.addAsteroids();
@@ -100,7 +100,7 @@ function checkCollisions() {
       } else {
         GameState.ships[i].destroy();
         if (!GameState.ships[i].live) {
-          bullet.parentShip.score += 25;
+          bullet.parentShip.score += Math.floor(Math.max(25, GameState.ships[i].score / 2));
           GameState.events.collisions.push({ bullet: bullet, ship: GameState.ships[i] });
         }
       }
@@ -148,14 +148,17 @@ server.on('connection', function (socket) {
 function sendEvents() {
   GameState.events.type = "update";
   if (Constants.debug) {
-    GameState.events.dbugShapes = GameState.asteroids.map((aster) => {
-      return { lines: aster.lines, pos: aster.pos, angle: aster.angle };
+    GameState.events.dbugShapes = GameState.powerups.map(powerup => {
+      return {lines: powerup.lines, pos: powerup.pos, angle: powerup.angle};
     }).concat(
+      GameState.asteroids.map((aster) => {
+      return { lines: aster.lines, pos: aster.pos, angle: aster.angle };
+    })).concat(
       GameState.ships.map((ship) => {
         return { lines: ship.lines, pos: ship.pos, angle: ship.angle };
     })).concat(
       GameState.bullets.map((bullet) => {
-        return { lines: bullet.lines, pos: bullet.pos, angle: bullet.angle };
+       return { lines: bullet.lines, pos: bullet.pos, angle: bullet.angle };
       }));
   }
   sockets.forEach(socket => socket.send(JSON.stringify(GameState.events, stringifyData)));
@@ -192,7 +195,7 @@ function readMessage(data, socket) {
         if (data.keys[i] == "r") {
           let deadShip = GameState.deadShips.find(ship => ship.id == data.id);
           if (deadShip) {
-            deadShip.powerups = {invincibility: 100};
+            deadShip.powerups = {};
             deadShip.setKeys([]);
             deadShip.hyperjump();
             deadShip.score = 0;
