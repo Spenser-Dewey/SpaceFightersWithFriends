@@ -12,6 +12,9 @@ const Vector2D = (function () {
             this.x += value * Math.cos(angle);
             this.y += value * Math.sin(angle);
         },
+        magnitude() {
+            return Math.sqrt(this.x * this.x + this.y * this.y);
+        },
         constMult(factor) {
             var scaleVec = Vector2D.create(this.x * factor, this.y * factor);
             if (Math.abs(scaleVec.x) < .001) {
@@ -61,8 +64,8 @@ const Vector2D = (function () {
         return obj;
     };
     
-    const createVectorAtAngle = function (x, y, angle) {
-        return create(x * Math.cos(angle), y * Math.sin(angle));
+    const createVectorAtAngle = function (mag, angle) {
+        return create(mag * Math.cos(angle), mag * Math.sin(angle));
     }
 
     const createRandom = function (minX, maxX, minY, maxY) {

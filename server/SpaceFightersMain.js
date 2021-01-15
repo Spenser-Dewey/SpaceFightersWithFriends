@@ -16,7 +16,7 @@ const GameState = {
     this.events = { asteroids: [], bullets: [], collisions: [], ships: [], deaths: [], frameTimer: 0 };
     this.addAsteroids();
 
-    this.interval = setInterval(() => this.update(), 20);
+    this.interval = setInterval(() => this.update(), 33);
   },
 
   update() {
@@ -73,10 +73,11 @@ const GameState = {
     }
   },
   addPowerup() {
+    const validPowers = Object.keys(Constants.powerups);
     if (this.powerups.length < Constants.maxPowerups) {
       if (Math.random() < Constants.powerupProbability) {
         this.addObject(new Powerup(Vector2D.createRandom(0, Constants.width, 0, Constants.height),
-          Constants.powerups[Math.floor(Constants.powerups.length * Math.random())], this));
+          validPowers[Math.floor(validPowers.length * Math.random())], this));
       }
     }
   },
@@ -106,18 +107,20 @@ function checkCollisions() {
       }
     } else if (powerup = GameState.powerups.find(powerup => overlap(powerup, GameState.ships[i]))) {
       powerup.destroy();
-      GameState.ships[i].powerups[powerup.type] = Constants.powerupTime;
+      GameState.ships[i].powerups[powerup.type] = Constants.powerups[powerup.type];
       GameState.events.collisions.push({ powerup: powerup, ship: GameState.ships[i] });
     }
   }
   for (let i = GameState.bullets.length - 1; i > -1; i--) {
     if (aster = GameState.asteroids.find(asteroid => overlap(asteroid, GameState.bullets[i]))) {
-      GameState.bullets[i].destroy();
+      
+      if(!GameState.bullets[i].drill) {
+        GameState.bullets[i].destroy();
+      }
+      
       aster.destroy();
       GameState.events.collisions.push({ asteroid: aster, bullet: GameState.bullets[i] });
-      if (!aster.live) {
-        GameState.bullets[i].parentShip.score += 1;
-      }
+      GameState.bullets[i].parentShip.score += 1;
     }
   }
 }
