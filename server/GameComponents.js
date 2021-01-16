@@ -15,13 +15,63 @@ class BaseComponent {
         this.id = gameInstance.getNextID();
     }
 
+    missilify() {
+        let minDist = Constants.width;
+        let minShip = null;
+        let newDist;
+        for (let i = this.gameInstance.ships.length - 1; i > -1; i--) {
+            newDist = this.pos.manDistanceTo(this.gameInstance.ships[i].pos);
+            if (this.gameInstance.ships[i] != this.parentShip && newDist < minDist) {
+                minShip = this.gameInstance.ships[i];
+                minDist = newDist;
+            }
+        }
+
+        if (minShip != null) {
+            this.target = minShip;
+            this.rotVel = .05;
+        }
+    }
+
     update() {
-        this.pos.add(this.velocity);
-        this.pos = this.pos.wrap(0, Constants.width, 0, Constants.height);
+        if (this.deathTime && this.deathTime <= this.gameInstance.frameTimer) {
+            this.destroy();
+        } else {
+            if (this.target && this.target.live) {
+                this.chase();
+            }
+            this.pos.add(this.velocity);
+            this.pos = this.pos.wrap(0, Constants.width, 0, Constants.height);
+        }
+    }
+
+    chase() {
+        this.angle = (this.angle + 2 * Math.PI) % (2 * Math.PI);
+        let targetAngle = (this.pos.angleTo(this.target.pos) + 2 * Math.PI) % (2 * Math.PI);
+        let diff = this.angle - targetAngle;
+
+        if (Math.abs(diff) > this.rotVel && Math.abs(2 * Math.PI - diff) > this.rotVel) {
+            if (diff > Math.PI || (diff < 0 && diff > -Math.PI)) {
+                this.angle += this.rotVel;
+            } else {
+                this.angle -= this.rotVel;
+            }
+            this.velocity = Vector2D.createVectorAtAngle(this.velocity.magnitude(), this.angle);
+        }
     }
 
     destroy() {
-        this.live = false;
+        if (this.live) {
+            this.live = false;
+            if (this.bomb) {
+                let bulletAngle;
+                for (let i = this.angle + 5 * Math.PI / 4; i < this.angle + 11 * Math.PI / 4; i += Math.random() * .25 + .5) {
+                    bulletAngle = i % (2 * Math.PI);
+                    this.gameInstance.addObject(new Bullet(Vector2D.create(this.pos.x, this.pos.y), Vector2D.createVectorAtAngle(10, bulletAngle),
+                        bulletAngle, this.parentShip, this.gameInstance));
+                }
+            }
+        }
     }
 }
 
@@ -50,7 +100,15 @@ class Asteroid extends BaseComponent {
     destroy() {
         if (this.live) {
             this.live = false;
-            if (this.splinterSteps > 0) {
+            if (this.bomb) {
+                let asterAngle;
+                for (let i = 0; i < 2 * Math.PI; i += Math.random() * 1.5) {
+                    asterAngle = i % (2 * Math.PI);
+                    this.gameInstance.addObject(new Asteroid(Vector2D.create(this.pos.x, this.pos.y), Vector2D.createVectorAtAngle(3, asterAngle),
+                        Math.random() * .1 - .05, 50, 0, this.gameInstance));
+                }
+            }
+            else if (this.splinterSteps > 0) {
                 this.gameInstance.addObject(new Asteroid(this.pos, Vector2D.createRandom(-2, 2, -2, 2),
                     Math.random() * .05 - .025, this.size * .8, this.splinterSteps - 1, this.gameInstance));
                 this.gameInstance.addObject(new Asteroid(this.pos, Vector2D.createRandom(-2, 2, -2, 2),
@@ -61,7 +119,9 @@ class Asteroid extends BaseComponent {
 
     update() {
         super.update();
-        this.angle = (this.angle + this.rotationalVelocity) % (Math.PI * 2);
+        if (!this.target) {
+            this.angle = (this.angle + this.rotationalVelocity) % (Math.PI * 2);
+        }
     }
 }
 
@@ -73,8 +133,8 @@ const createRandomAsteroid = function (gameInstance) {
 class Bullet extends BaseComponent {
 
     constructor(pos, bulletVelocity, angle, parentShip, gameInstance) {
-        super(pos, bulletVelocity, 16, 4, angle, gameInstance);
-        this.deathTime = this.gameInstance.frameTimer + 200;
+        super(pos, bulletVelocity, 30, 6, angle, gameInstance);
+        this.deathTime = this.gameInstance.frameTimer + 40;
         this.parentShip = parentShip;
         this.color = parentShip.bulletColor;
 
@@ -83,20 +143,13 @@ class Bullet extends BaseComponent {
         this.lines.push(Line.create(Vector2D.create(this.width / 2, this.height / 2), Vector2D.create(-this.width / 2, this.height)));
         this.lines.push(Line.create(Vector2D.create(-this.width / 2, this.height / 2), Vector2D.create(-this.width / 2, -this.height)));
     }
-
-    update() {
-        super.update();
-        if (this.deathTime <= this.gameInstance.frameTimer) {
-            this.live = false;
-        }
-    }
 }
 
 class Powerup extends BaseComponent {
     constructor(pos, type, gameInstance) {
-        super(pos, Vector2D.create(0, 0), 10, 10, 0, gameInstance);
+        super(pos, Vector2D.create(0, 0), 60, 60, 0, gameInstance);
         this.type = type;
-        
+
         this.lines.push(Line.create(Vector2D.create(-this.width / 2, -this.height / 2), Vector2D.create(this.width / 2, -this.height / 2)));
         this.lines.push(Line.create(Vector2D.create(this.width / 2, -this.height / 2), Vector2D.create(this.width / 2, this.height / 2)));
         this.lines.push(Line.create(Vector2D.create(this.width / 2, this.height / 2), Vector2D.create(-this.width / 2, this.height / 2)));
@@ -105,13 +158,14 @@ class Powerup extends BaseComponent {
 }
 
 class Ship extends BaseComponent {
-    shotDelay = 20;
-    jumpDelay = 100;
+    shotCooldown = 20;
+    jumpCooldown = 400;
     lastShotTime = 0;
     lastJumpTime = 0;
+    hyperJumpDelay = 60;
     score = 0;
     keys = [];
-    powerups = [];
+    powerups = {};
 
     constructor(pos, velocity, width, height, angle, bulletColor, wingColor, bodyColor, username, gameInstance) {
         super(pos, velocity, width, height, angle, gameInstance);
@@ -122,34 +176,65 @@ class Ship extends BaseComponent {
         this.wingColor = wingColor;
         this.bodyColor = bodyColor;
 
+        this.setLines();
+    }
+
+    setLines() {
+        this.lines = [];
         this.lines.push(Line.create(Vector2D.create(-this.width / 2, -this.height / 2), Vector2D.create(this.width / 2, 0)));
         this.lines.push(Line.create(Vector2D.create(this.width / 2, 0), Vector2D.create(-this.width / 2, this.height / 2)));
         this.lines.push(Line.create(Vector2D.create(-this.width / 2, this.height / 2), Vector2D.create(-this.width / 2, -this.height / 2)));
     }
 
     hyperjump() {
-        this.pos = Vector2D.createRandom(0, Constants.width, 0, Constants.height);
-        for (var i = 0; i < this.gameInstance.asteroids.length; i++) {
-            if (overlap(this.gameInstance.asteroids[i], this)) {
-                this.lastJumpTime = this.gameInstance.frameTimer;
-                this.hyperjump();
-                break;
-            }
+        this.hyperjumpTimer = 0;
+        this.velocity = Vector2D.createRandom(-10000, 10000, -10000, 10000);
+        this.lastJumpTime = this.gameInstance.frameTimer;
+        if (this.powerups.invincibility) {
+            this.powerups.invincibility = Math.max(this.powerups.invincibility, 100);
+        } else {
+            this.powerups.invincibility = 100;
         }
-        this.velocity.x = 0;
-        this.velocity.y = 0;
-        this.width = this.trueWidth;
-        this.height = this.trueHeight;
 
+        this.setLines();
     }
 
     shoot(bulletAngle, distance) {
-        this.gameInstance.addObject(
-            new Bullet(Vector2D.create(this.pos.x + Math.cos(bulletAngle) * (this.width / 2 + distance), 
-            this.pos.y + Math.sin(bulletAngle) * (this.height / 2 + distance)),
-                Vector2D.create(10 * Math.cos(bulletAngle) + this.velocity.x,
-                    10 * Math.sin(bulletAngle) + this.velocity.y),
-                bulletAngle, this, this.gameInstance));
+        let shot;
+
+        if (this.powerups['asteroid shot']) {
+            distance *= 5;
+            shot = new Asteroid(Vector2D.create(this.pos.x + Math.cos(bulletAngle) * (this.width / 2 + distance),
+                this.pos.y + Math.sin(bulletAngle) * (this.height / 2 + distance)),
+                Vector2D.create(3 * Math.cos(bulletAngle),
+                    3 * Math.sin(bulletAngle)),
+                Math.random() * .02 - .01, 80, 3, this.gameInstance);
+        } else {
+            shot = new Bullet(Vector2D.create(this.pos.x + Math.cos(bulletAngle) * (this.width / 2 + distance),
+                this.pos.y + Math.sin(bulletAngle) * (this.height / 2 + distance)),
+                Vector2D.create(20 * Math.cos(bulletAngle) + this.velocity.x,
+                    20 * Math.sin(bulletAngle) + this.velocity.y),
+                bulletAngle, this, this.gameInstance);
+
+            if (this.powerups['drill']) {
+                shot.drill = true;
+                this.powerups['drill']--;
+            }
+        }
+
+        if (this.powerups['missile']) {
+            this.powerups['missile']--;
+            if (!shot.parentShip) { shot.parentShip = this; }
+            shot.missilify();
+            shot.deathTime = (shot.deathTime ? 80 + shot.deathTime : this.gameInstance.frameTimer + 200);
+        }
+        if (this.powerups['bomb']) {
+            this.powerups['bomb']--;
+            shot.bomb = true;
+            shot.deathTime = (shot.deathTime ? shot.deathTime - 20 : this.gameInstance.frameTimer + 60);
+        }
+
+        this.gameInstance.addObject(shot);
         this.lastShotTime = this.gameInstance.frameTimer;
     }
 
@@ -168,71 +253,103 @@ class Ship extends BaseComponent {
 
     update() {
         super.update();
-
-        if (this.keys["w"] || this.keys["s"] || this.keys["d"] || this.keys["a"]) {
-
-            if (this.keys["w"]) {
-                this.velocity.x += .1 * Math.cos(this.angle);
-                this.velocity.y += .1 * Math.sin(this.angle);
-            }
-            if (this.keys["s"]) {
-                this.velocity.x += -.1 * Math.cos(this.angle);
-                this.velocity.y += -.1 * Math.sin(this.angle);
-            }
-            if (this.keys["a"]) {
-                this.angle -= .1;
-            }
-            if (this.keys["d"]) {
-                this.angle += .1;
-            }
+        const accelFactor = .15 * (1 + 2 * !!this.powerups['dex boost']);
+        if (this.keys["w"] || this.keys["arrowup"]) {
+            this.velocity.x += accelFactor * Math.cos(this.angle);
+            this.velocity.y += accelFactor * Math.sin(this.angle);
+        }
+        if (this.keys["s"] || this.keys["arrowdown"]) {
+            this.velocity.x += -accelFactor * Math.cos(this.angle);
+            this.velocity.y += -accelFactor * Math.sin(this.angle);
+        }
+        if (this.keys["a"] || this.keys["arrowleft"]) {
+            this.angle -= .07;
+        }
+        if (this.keys["d"] || this.keys["arrowright"]) {
+            this.angle += .07;
         }
 
-        if (this.keys[" "] && (this.gameInstance.frameTimer > this.lastShotTime + this.shotDelay
-            || (this.powerups["turbo shot"] && this.gameInstance.frameTimer > this.lastShotTime + this.shotDelay / 5))) {
-            if(this.powerups["triple shot"]) {
-                this.shoot(this.angle - .5, 0);
-                this.shoot(this.angle, 16);
-                this.shoot(this.angle + .5, 0);
+        let powershotCooldown = (1 + 2 * !!this.powerups["asteroid shot"]) * this.shotCooldown / ((!!this.powerups["turbo shot"]) + 1);
+        if (this.keys[" "] && (this.gameInstance.frameTimer > this.lastShotTime + powershotCooldown)) {
+            if (this.powerups["triple shot"]) {
+                this.shoot(this.angle - .5, 25);
+                this.shoot(this.angle, 30);
+                this.shoot(this.angle + .5, 25);
             } else {
-                this.shoot(this.angle, 16);
+                this.shoot(this.angle, 25);
             }
         }
         if (this.keys["h"]) {
-            if (!this.hyperjumpTimer) {
-                this.hyperjumpTimer = 60;
+            if (!this.hyperjumpTimer && (this.powerups['turbo jump'] || this.gameInstance.frameTimer > this.lastJumpTime + this.jumpCooldown)) {
+                this.hyperjumpTimer = this.hyperJumpDelay / (1 + 5 * !!this.powerups["turbo jump"]);
             }
         }
-        if(Constants.debug) {
+        if (Constants.debug) {
             if (this.keys['0']) {
-                this.powerups['invincibility'] = true;
+                this.powerups['invincibility'] = Constants.powerups["invincibility"];
             }
             if (this.keys['f']) {
-                this.powerups['turbo shot'] = true;
+                this.powerups['turbo shot'] = Constants.powerups['turbo shot'];
             }
             if (this.keys['r']) {
-                this.powerups['reflection'] = true;
+                this.powerups['reflection'] = Constants.powerups['reflection'];
             }
             if (this.keys['t']) {
-                this.powerups['triple shot'] = true;
+                this.powerups['triple shot'] = Constants.powerups['triple shot'];
             }
             if (this.keys['m']) {
-                this.powerups['minify'] = true;
+                this.powerups['minify'] = Constants.powerups['minify'];
+            }
+            if (this.keys['q']) {
+                this.powerups['asteroid shot'] = Constants.powerups['asteroid shot'];
+            }
+            if (this.keys['j']) {
+                this.powerups['turbo jump'] = Constants.powerups['turbo jump'];
+            }
+            if (this.keys['x']) {
+                this.powerups['drill'] = Constants.powerups['drill'];
+            }
+            if (this.keys['l']) {
+                this.powerups['dex boost'] = Constants.powerups['dex boost'];
+            }
+            if (this.keys["n"]) {
+                this.powerups['missile'] = Constants.powerups['missile'];
+            }
+            if (this.keys["b"]) {
+                this.powerups['bomb'] = Constants.powerups['bomb'];
             }
         }
 
         if (this.hyperjumpTimer) {
-            this.width *= .96;
-            this.height *= .96;
+            let scaleFactor = this.hyperjumpTimer / (this.hyperJumpDelay / (1 + 5 * !!this.powerups["turbo jump"]));
+            this.width = (this.trueWidth / (1 + !!this.powerups["minify"])) * scaleFactor;
+            this.height = (this.trueHeight / (1 + !!this.powerups["minify"])) * scaleFactor;
+
             if (!(--this.hyperjumpTimer)) {
                 this.hyperjump();
             }
-        } else if(this.powerups["minify"]) {
-            this.width = this.trueWidth / 2;
-            this.height = this.trueHeight / 2;
+            this.setLines();
+        } else if (this.lastJumpTime == this.gameInstance.frameTimer - 1) {
+            this.velocity.x = 0;
+            this.velocity.y = 0;
+        } else if (this.width != (this.trueWidth / (1 + !!this.powerups["minify"]))) {
+            this.width = (this.trueWidth / (1 + !!this.powerups["minify"]));
+            this.height = (this.trueHeight / (1 + !!this.powerups["minify"]));
+            this.setLines();
         }
-        this.velocity = this.velocity.constMult(.99);
-    }
 
+        Object.keys(this.powerups).forEach(power => {
+            if (this.powerups[power] > 0 && power !== "drill" && power !== "missile" && power != "bomb") {
+                this.powerups[power]--;
+            }
+        });
+
+        if (this.powerups['dex boost']) {
+            this.velocity = this.velocity.constMult(.98);
+        } else {
+            this.velocity = this.velocity.constMult(.99);
+        }
+    }
 }
 
 module.exports = { Asteroid, Ship, Bullet, Powerup, createRandomAsteroid };

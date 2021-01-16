@@ -1,6 +1,6 @@
 const { Asteroid, Ship, Bullet, Powerup, createRandomAsteroid } = require('./GameComponents');
 const Constants = require('./Constants');
-const { Vector2D, overlap, stringifyData, stringifyShip, stringifyBullet } = require('./Utils');
+const { Vector2D, overlap, stringifyData, } = require('./Utils');
 
 const GameState = {
   frameTimer: 0,
@@ -11,21 +11,23 @@ const GameState = {
   events: [],
   deadShips: [],
   powerups: [],
+  missiles: [],
 
   start() {
-    this.addAsteroids();
     this.events = { asteroids: [], bullets: [], collisions: [], ships: [], deaths: [], frameTimer: 0 };
+    this.addAsteroids();
 
-    this.interval = setInterval(() => this.update(), 20);
+    this.interval = setInterval(() => this.update(), 33);
   },
 
   update() {
     this.frameTimer++;
     this.events = { asteroids: [], bullets: [], powerups: [], collisions: [], deaths: [], frameTimer: this.frameTimer };
 
-    this.updateElement(this.asteroids);
     this.updateElement(this.bullets);
     this.updateElement(this.ships);
+    this.updateElement(this.asteroids);
+    this.updateElement(this.powerups);
 
     this.addAsteroids();
     this.addPowerup();
@@ -33,6 +35,7 @@ const GameState = {
     checkCollisions();
 
     this.events.ships = this.ships;
+    this.events.missiles = this.missiles;
     sendEvents();
   },
 
@@ -45,37 +48,47 @@ const GameState = {
         if (eleArr[i] instanceof Ship) {
           this.deadShips.push(eleArr[i]);
         }
+        if(eleArr[i].target) {
+          this.missiles.splice(this.missiles.indexOf(eleArr[i]), 1);
+        }
         eleArr.splice(i, 1);
       }
     }
   },
   addObject(newObj) {
+    let logEvent = true;
+    if(newObj.target) {
+      this.missiles.push(newObj);
+      logEvent = false;
+    }
+    
     if (newObj instanceof Asteroid) {
       this.asteroids.push(newObj);
-      this.events.asteroids.push(newObj);
+      if(logEvent) this.events.asteroids.push(newObj);
     } else if (newObj instanceof Ship) {
       this.ships.push(newObj); //Ships always put into events
     } else if (newObj instanceof Bullet) {
       this.bullets.push(newObj);
-      this.events.bullets.push(newObj);
+      if(logEvent) this.events.bullets.push(newObj);
     } else if (newObj instanceof Powerup) {
       this.powerups.push(newObj);
-      this.events.powerups.push(newObj);
+      if(logEvent) this.events.powerups.push(newObj);
     }
   },
   addAsteroids() {
     for (var i = this.asteroids.length; i < Constants.minAsteroids; i++) {
       let newAsteroid = createRandomAsteroid(this);
-      if (!GameState.ships.find(playerShip => playerShip.pos.manDistanceTo(newAsteroid) < 200)) {
-        this.asteroids.push(newAsteroid);
+      if (!GameState.ships.find(playerShip => playerShip.pos.manDistanceTo(newAsteroid.pos) < 600)) {
+        this.addObject(newAsteroid);
       }
     }
   },
   addPowerup() {
+    const validPowers = Object.keys(Constants.powerups);
     if (this.powerups.length < Constants.maxPowerups) {
       if (Math.random() < Constants.powerupProbability) {
         this.addObject(new Powerup(Vector2D.createRandom(0, Constants.width, 0, Constants.height),
-          Constants.powerups[Math.floor(Constants.powerups.length * Math.random())], this));
+          validPowers[Math.floor(validPowers.length * Math.random())], this));
       }
     }
   },
@@ -92,25 +105,36 @@ function checkCollisions() {
       GameState.events.collisions.push({ asteroid: aster, ship: GameState.ships[i] });
     }
     else if (bullet = GameState.bullets.find(bullet => overlap(bullet, GameState.ships[i]))) {
-      bullet.destroy();
+      if(!GameState.bullets[i].drill) {
+        GameState.bullets[i].destroy();
+      }
+      
       if (GameState.ships[i].powerups["reflection"]) {
-        GameState.addObject(new Bullet(bullet.pos, bullet.velocity.constMult(-1), bullet.angle, bullet.parentShip, bullet.gameInstance));
+        let newVel = bullet.velocity.constMult(-1);
+        GameState.addObject(new Bullet(Vector2D.create(bullet.pos.x + newVel.x * 2, bullet.pos.y + newVel.y * 2), newVel, bullet.angle, bullet.parentShip, bullet.gameInstance));
       } else {
         GameState.ships[i].destroy();
-        GameState.events.collisions.push({ bullet: bullet, ship: GameState.ships[i] });
         if (!GameState.ships[i].live) {
-          bullet.parentShip.score++;
+          bullet.parentShip.score += Math.floor(Math.max(25, GameState.ships[i].score / 2));
+          GameState.events.collisions.push({ bullet: bullet, ship: GameState.ships[i] });
         }
       }
     } else if (powerup = GameState.powerups.find(powerup => overlap(powerup, GameState.ships[i]))) {
-
+      powerup.destroy();
+      GameState.ships[i].powerups[powerup.type] = Constants.powerups[powerup.type];
+      GameState.events.collisions.push({ powerup: powerup, ship: GameState.ships[i] });
     }
   }
   for (let i = GameState.bullets.length - 1; i > -1; i--) {
     if (aster = GameState.asteroids.find(asteroid => overlap(asteroid, GameState.bullets[i]))) {
-      GameState.bullets[i].destroy();
+      
+      if(!GameState.bullets[i].drill) {
+        GameState.bullets[i].destroy();
+      }
+      
       aster.destroy();
       GameState.events.collisions.push({ asteroid: aster, bullet: GameState.bullets[i] });
+      GameState.bullets[i].parentShip.score += 1;
     }
   }
 }
@@ -133,7 +157,6 @@ server.on('connection', function (socket) {
     readMessage(JSON.parse(msg), socket);
   });
 
-  // When a socket closes, or disconnects, remove it from the array.
   socket.on('close', function () {
     sockets = sockets.filter(s => s !== socket);
   });
@@ -141,17 +164,34 @@ server.on('connection', function (socket) {
 
 function sendEvents() {
   GameState.events.type = "update";
+  if (Constants.debug) {
+    GameState.events.dbugShapes = GameState.powerups.map(powerup => {
+      return {lines: powerup.lines, pos: powerup.pos, angle: powerup.angle};
+    }).concat(
+      GameState.asteroids.map((aster) => {
+      return { lines: aster.lines, pos: aster.pos, angle: aster.angle };
+    })).concat(
+      GameState.ships.map((ship) => {
+        return { lines: ship.lines, pos: ship.pos, angle: ship.angle };
+    })).concat(
+      GameState.bullets.map((bullet) => {
+       return { lines: bullet.lines, pos: bullet.pos, angle: bullet.angle };
+      }));
+  }
   sockets.forEach(socket => socket.send(JSON.stringify(GameState.events, stringifyData)));
 }
 
 function readMessage(data, socket) {
   if (data.type == "join") {
     const gameData = {};
-    const newShip = new Ship(Vector2D.createRandom(0, Constants.clientWidth, 0, Constants.clientHeight),
+    const newShip = new Ship(Vector2D.createRandom(0, Constants.width, 0, Constants.height),
       Vector2D.create(0, 0), 60, 60, 0, data.bulletColor, data.wingColor, data.bodyColor, data.username, GameState);
+    newShip.powerups.invincibility = 100
     gameData.asteroids = GameState.asteroids;
+    gameData.powerups = GameState.powerups;
+    gameData.missiles = GameState.missiles;
     gameData.bullets = GameState.bullets;
-    gameData.frameTimer = GameState.frameTimer + 1;
+    gameData.frameTimer = GameState.frameTimer;
     gameData.type = "join";
     gameData.clientWidth = Constants.clientWidth;
     gameData.clientHeight = Constants.clientHeight;
@@ -173,6 +213,10 @@ function readMessage(data, socket) {
         if (data.keys[i] == "r") {
           let deadShip = GameState.deadShips.find(ship => ship.id == data.id);
           if (deadShip) {
+            deadShip.powerups = {};
+            deadShip.setKeys([]);
+            deadShip.hyperjump();
+            deadShip.score = 0;
             deadShip.live = true;
             GameState.ships.push(deadShip);
           }

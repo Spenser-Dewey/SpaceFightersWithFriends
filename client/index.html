@@ -7,20 +7,25 @@
         body {
             width: 100%;
             height: 100%;
+            /* background-color: whitesmoke; */
+            background-image: url("images/background-space-fighters.png");
         }
 
         #preview {
-            width: 400px;
-            height: 200px;
+            width: 300px;
+            height: 130px;
             margin-top: 0px;
+            /* background: url("images/background-space-fighters.jpg"); */
         }
 
         button {
-            width: 50px;
-            height: 50px;
+            width: 80px;
+            height: 80px;
+            margin: 5px;
         }
 
         button:nth-child(1) {
+            margin-left: 20px;
             background-color: #5b5496;
         }
 
@@ -49,24 +54,57 @@
         }
 
         #thebutton {
-            width: 100px;
-            height: 40px;
-            background-color: white;
+            width: 190px;
+            height: 60px;
+            border: black;
+            margin-top: 30px;
+            background-image: url("images/button-background.jpg");
+        }
+
+        #description {
+            color: #dddfe0;
+            background-color: black;
+            text-shadow: orange;
+            font-family: sans-serif;
+            font-size: 50px;
+            text-shadow: 3px 3px #c78752;
+            font-weight: 500;
+            padding: 10px;
+            width: 700px;
+        }
+
+        input {
+            height: 50px;
+            font-size: 50px;
+            color: white;
+            background-color: black;
+        }
+        #credits{
+            float: right;
+            color:white;
+            margin: 10px;
+            margin-top: 100px;
+            font-family: sans-serif;
         }
     </style>
 </head>
 
 <body>
+    <audio id="bangLarge" src="sounds/bangLarge.mp3"></audio>
+    <audio id="bangMedium" src="sounds/bangMedium.mp3"></audio>
+    <audio id="bangSmall" src="sounds/bangSmall.mp3"></audio>
+    <audio id="fire" src="sounds/fire.mp3"></audio>
+
     <div id="welcome">
-        <h1>Welcome to Space Fighters!</h1>
-        <h3>Enter your username, customize your ship, then press The Button to get started!</h3>
+        <img height="300px" src="images/space-fighters-logo-homepage.png">
+        <p id="description">Enter your username, customize your ship, then press The Button to get started!</h3>
 
         <form>
-            <label for="username">Username:</label>
+            <label for="username"><img src="images/username.jpg"></label><br>
             <input type="text" id="username" name="username" maxlength="20"><br><br>
         </form>
 
-        <h4>Wing color:</h4>
+        <img src="images/wingcolor.jpg">
         <div id="wingcolorbuttons">
             <button id="1" onclick="onPress(this.id)"></button>
             <button id="2" onclick="onPress(this.id)"></button>
@@ -77,7 +115,7 @@
             <button id="7" onclick="onPress(this.id)"></button>
         </div>
 
-        <h4>Body color:</h4>
+        <img src="images/bodycolor.jpg">
         <div id="bodycolorbuttons">
             <button id="8" onclick="onPress(this.id)"></button>
             <button id="9" onclick="onPress(this.id)"></button>
@@ -88,7 +126,7 @@
             <button id="14" onclick="onPress(this.id)"></button>
         </div>
 
-        <h4>Bullet color:</h4>
+        <img src="images/bulletcolor.jpg">
         <div id="bulletcolorbuttons">
             <button id="15" onclick="onPress(this.id)"></button>
             <button id="16" onclick="onPress(this.id)"></button>
@@ -105,14 +143,30 @@
 
         <br>
 
-        <button id="thebutton" onClick="onTheButton()">The Button</button>
+        <button id="thebutton" onClick="onTheButton()"></button>
+    
+        <p id="credits">Created by Spenser Dewey, Jamin Eisenberg and Madelyn Dewey</p>
     </div>
 
     <script data-main="scripts/main" src="require.js"></script>
     <script>
+        const Http = new XMLHttpRequest();
+        const url = 'https://random-word-api.herokuapp.com/word?number=2';
+
+        Http.onreadystatechange = (e) => {
+            let words = JSON.parse("{ \"list\": " + Http.responseText + " \n}").list;
+
+            window.username = words[0].charAt(0).toUpperCase() + words[0].substring(1);
+            window.username += words[1].charAt(0).toUpperCase() + words[1].substring(1);
+            window.username = window.username.substring(0, 35);
+            
+            if (!window.asteroidsGame)
+                window.asteroidsGame = new AsteroidsGame();
+        }
+
         canvas = document.getElementById("preview");
-        canvas.width = 400
-        canvas.height = 200
+        canvas.width = 300
+        canvas.height = 130
         ctx = canvas.getContext("2d");
 
         wingColor = "#dddfe0";
@@ -124,21 +178,21 @@
 
         function drawShip() {
             if (!document.getElementById("canvas")) {
-                ctx.fillStyle = "rgb(0, 0, 0)";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                // ctx.fillStyle = "#000";
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                 if (document.getElementById("username"))
                     username = document.getElementById("username").value
 
                 ctx.fillStyle = bulletColor;
-                ctx.fillRect(280, 98, 32, 4);
+                ctx.fillRect(250, 78, 32, 4);
 
                 ctx.fillStyle = "#FFF";
                 ctx.textAlign = "center";
                 ctx.font = "20px Arial";
-                ctx.fillText(username, 165, 45);
+                ctx.fillText(username, 165, 25);
 
-                pos = { x: 180, y: 100 };
+                pos = { x: 180, y: 80 };
                 angle = 0;
                 width = 80;
                 height = 80;
@@ -207,6 +261,9 @@
 
         function onTheButton() {
             document.getElementById("welcome").remove();
+            document.body.style.backgroundImage = "";
+            document.body.style.removeProperty("background-image");
+
             var c = document.createElement("canvas");
             c.id = "canvas"
             document.body.appendChild(c);
@@ -220,11 +277,20 @@
             canvas.style.left = "0";
             canvas.style.top = "0";
 
-            window.asteroidsGame = new AsteroidsGame();
+            if (username.trim() === "") {
+                Http.open("GET", url);
+                Http.send();
+            }
+            else {
+                window.asteroidsGame = new AsteroidsGame();
+            }
         }
     </script>
 
     <script src="main.js"></script>
+    <script>
+        startWebSocket();
+    </script>
 </body>
 
 </html>
