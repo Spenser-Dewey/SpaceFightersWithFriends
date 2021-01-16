@@ -5,12 +5,11 @@
 //  powerup notification: S
 //  scoring: S
 //  leaderboard: S
+//---------------------------------
 //  sound: J
 //  kill notification: J
 //  update login page: J
 //  respawn players smoothly: S
-
-//  SPACE STATION: ...we'll see
 
 function map(x, in_min, in_max, out_min, out_max) {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
@@ -20,7 +19,7 @@ function map(x, in_min, in_max, out_min, out_max) {
 var keys_down: Set<String> = new Set();
 
 function startWebSocket() {
-    window.ws = new WebSocket("ws://192.168.1.128");
+    window.ws = new WebSocket("ws://space-fighters-multiplayer.herokuapp.com/");
 
     ws.onmessage = function (message) {
         if (window.asteroidsGame) {
@@ -38,12 +37,10 @@ function startWebSocket() {
             msg.ships.forEach(ship => {
                 asteroidsGame.gameElements.push(new Trail(new Vector2D(ship.pos.x, ship.pos.y).add(Vector2D.fromAngle(ship.angle).mult(-ship.height / 2))));
             });
-            msg.missiles.forEach(missile => {
-                asteroidsGame.gameElements.push(new Trail(new Vector2D(missile.pos.x, missile.pos.y).add(Vector2D.fromAngle(missile.angle).mult(-missile.height / 2))));
-            });
 
             switch (msg.type) {
                 case "join":
+                    console.log(msg);
 
                     asteroidsGame.playerShipID = msg.id;
                     asteroidsGame.canvas.width = msg.clientWidth;
@@ -131,6 +128,7 @@ function startWebSocket() {
                             asteroidsGame.gameElements.push(new Debris(new Vector2D(collision.asteroid.pos.x, collision.asteroid.pos.y), collision.ship.angle, 30, "#334243"));
                         }
                         else if (!collision.asteroid) {
+                            console.log(collision.ship);
                             if (!collision.ship.powerups.invincibility) {
                                 let killer = collision.bullet.parentShip.username;
                                 let killee = collision.ship.username;
@@ -221,10 +219,6 @@ function startWebSocket() {
                     }
 
                     asteroidsGame.move(new Vector2D(asteroidsGame.playerShipPos.x, asteroidsGame.playerShipPos.y).add(new Vector2D(asteroidsGame.canvas.width / 2, asteroidsGame.canvas.height / 2).mult(-1)));
-
-                    msg.missiles.forEach(missile => {
-                        asteroidsGame.drawMissile(missile);
-                    });
 
                     msg.ships.forEach(ship => {
                         asteroidsGame.drawShip(ship);
@@ -425,28 +419,8 @@ class AsteroidsGame {
         }
         this.ctx.stroke();
         this.ctx.restore();
+
     }
-    drawMissile(missile) {
-        this.ctx.save();
-
-        let p = new Vector2D(missile.pos.x, missile.pos.y).add((this.playerShipPos.copy()).mult(-1));
-        p.add(new Vector2D(this.canvas.width / 2, this.canvas.height / 2));
-        p.mod(this.width, this.height);
-
-        this.ctx.translate(p.x, p.y);
-        this.ctx.rotate(missile.angle);
-
-        this.ctx.fillStyle = "#FFF";
-
-        this.ctx.beginPath();
-        this.ctx.moveTo(missile.lines[0].x, missile.lines[0].y);
-        for (let i: number = missile.lines.length - 1; i > -1; i--) {
-            this.ctx.lineTo(missile.lines[i].x, missile.lines[i].y);
-        }
-        this.ctx.fill();
-        this.ctx.restore();
-    }
-
     drawShip(ship) {
         this.ctx.save();
 
@@ -832,15 +806,6 @@ class Powerup {
 
                 ctx.stroke();
                 break;
-            case "dex boost":
-                ctx.fillStyle = "#5555ff77";
-                ctx.beginPath();
-                ctx.arc(-this.width / 6, 0, this.width / 16, 0, Math.PI * 2);
-                // ctx.arc(0, 0, this.width / 16, 0, Math.PI * 2);
-                // ctx.arc(0, 0, this.width / 16, 0, Math.PI * 2);
-                // ctx.arc(0, 0, this.width / 16, 0, Math.PI * 2);
-                ctx.fill();
-                break;
         }
 
         ctx.restore();
@@ -916,8 +881,10 @@ class Vector2D {
     }
 
     mod(xMax: number, yMax: number) {
-        this.x = (this.x + xMax) % xMax;
-        this.y = (this.y + yMax) % yMax;
+        this.x = ((this.x % xMax) + xMax) % xMax;
+        this.y = ((this.y % yMax) + yMax) % yMax;
+        // this.x %= xMax;
+        // this.y %= yMax;
         return this;
     }
 
