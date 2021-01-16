@@ -1,22 +1,26 @@
 {
-  "name": "spacefighters",
-  "version": "1.0.0",
-  "description": "HTML/NodeJS based multiplier space fighting game",
-  "main": "SpaceFightersMain.js",
+  "name": "space-fighters",
+  "version": "7.0.3",
+  "description": "Multiplayer multi-directional shooter set in space.",
+  "main": "./server/SpaceFightersMain.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node ./server/SpaceFightersMain.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Spenser-Dewey/SpaceFighters.git"
-  },
-  "author": "Spenser Dewey, Jamin Eisenberg",
+  "keywords": [
+    "space",
+    "fighters",
+    "multiplayer",
+    "game",
+    "fighter",
+    "asteroids",
+    "io"
+  ],
+  "author": "Spenser Dewey, Jamin Eisenberg and Madelyn Dewey",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/Spenser-Dewey/SpaceFighters/issues"
-  },
-  "homepage": "https://github.com/Spenser-Dewey/SpaceFighters#readme",
   "dependencies": {
     "ws": "^7.4.2"
+  },
+  "engines": {
+    "node": "15.x"
   }
 }
