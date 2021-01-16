@@ -5,11 +5,11 @@
 //  powerup notification: S
 //  scoring: S
 //  leaderboard: S
-//---------------------------------
 //  sound: J
 //  kill notification: J
 //  update login page: J
 //  respawn players smoothly: S
+//  SPACE STATION: ...we'll see
 function map(x, in_min, in_max, out_min, out_max) {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
@@ -27,6 +27,9 @@ function startWebSocket() {
             }
             msg.ships.forEach(function (ship) {
                 asteroidsGame.gameElements.push(new Trail(new Vector2D(ship.pos.x, ship.pos.y).add(Vector2D.fromAngle(ship.angle).mult(-ship.height / 2))));
+            });
+            msg.missiles.forEach(function (missile) {
+                asteroidsGame.gameElements.push(new Trail(new Vector2D(missile.pos.x, missile.pos.y).add(Vector2D.fromAngle(missile.angle).mult(-missile.height / 2))));
             });
             switch (msg.type) {
                 case "join":
@@ -97,7 +100,6 @@ function startWebSocket() {
                             asteroidsGame.gameElements.push(new Debris(new Vector2D(collision.asteroid.pos.x, collision.asteroid.pos.y), collision.ship.angle, 30, "#334243"));
                         }
                         else if (!collision.asteroid) {
-                            console.log(collision.ship);
                             if (!collision.ship.powerups.invincibility) {
                                 var killer = collision.bullet.parentShip.username;
                                 var killee = collision.ship.username;
@@ -170,6 +172,9 @@ function startWebSocket() {
                         }
                     }
                     asteroidsGame.move(new Vector2D(asteroidsGame.playerShipPos.x, asteroidsGame.playerShipPos.y).add(new Vector2D(asteroidsGame.canvas.width / 2, asteroidsGame.canvas.height / 2).mult(-1)));
+                    msg.missiles.forEach(function (missile) {
+                        asteroidsGame.drawMissile(missile);
+                    });
                     msg.ships.forEach(function (ship) {
                         asteroidsGame.drawShip(ship);
                     });
@@ -319,6 +324,22 @@ var AsteroidsGame = /** @class */ (function () {
             this.ctx.lineTo(shape.lines[i].x, shape.lines[i].y);
         }
         this.ctx.stroke();
+        this.ctx.restore();
+    };
+    AsteroidsGame.prototype.drawMissile = function (missile) {
+        this.ctx.save();
+        var p = new Vector2D(missile.pos.x, missile.pos.y).add((this.playerShipPos.copy()).mult(-1));
+        p.add(new Vector2D(this.canvas.width / 2, this.canvas.height / 2));
+        p.mod(this.width, this.height);
+        this.ctx.translate(p.x, p.y);
+        this.ctx.rotate(missile.angle);
+        this.ctx.fillStyle = "#FFF";
+        this.ctx.beginPath();
+        this.ctx.moveTo(missile.lines[0].x, missile.lines[0].y);
+        for (var i = missile.lines.length - 1; i > -1; i--) {
+            this.ctx.lineTo(missile.lines[i].x, missile.lines[i].y);
+        }
+        this.ctx.fill();
         this.ctx.restore();
     };
     AsteroidsGame.prototype.drawShip = function (ship) {
@@ -604,6 +625,12 @@ var Powerup = /** @class */ (function () {
                 ctx.lineTo(this.width / 2, this.height / 2);
                 ctx.stroke();
                 break;
+            case "asteroid shot":
+                ctx.fillStyle = "#334243";
+                ctx.beginPath();
+                ctx.arc(0, 0, this.width / 2 - 1, 0, Math.PI * 2);
+                ctx.fill();
+                break;
             case "minify":
                 ctx.lineWidth = 3;
                 ctx.strokeStyle = "#5b5496";
@@ -629,6 +656,15 @@ var Powerup = /** @class */ (function () {
                 ctx.lineTo(this.width / 20, this.height / 20);
                 ctx.lineTo(this.width / 5, this.height / 10);
                 ctx.stroke();
+                break;
+            case "dex boost":
+                ctx.fillStyle = "#5555ff77";
+                ctx.beginPath();
+                ctx.arc(-this.width / 6, 0, this.width / 16, 0, Math.PI * 2);
+                // ctx.arc(0, 0, this.width / 16, 0, Math.PI * 2);
+                // ctx.arc(0, 0, this.width / 16, 0, Math.PI * 2);
+                // ctx.arc(0, 0, this.width / 16, 0, Math.PI * 2);
+                ctx.fill();
                 break;
         }
         ctx.restore();
@@ -685,10 +721,8 @@ var Vector2D = /** @class */ (function () {
         return new Vector2D(Math.cos(angle), Math.sin(angle));
     };
     Vector2D.prototype.mod = function (xMax, yMax) {
-        this.x = ((this.x % xMax) + xMax) % xMax;
-        this.y = ((this.y % yMax) + yMax) % yMax;
-        // this.x %= xMax;
-        // this.y %= yMax;
+        this.x = (this.x + xMax) % xMax;
+        this.y = (this.y + yMax) % yMax;
         return this;
     };
     Vector2D.prototype.copy = function () {

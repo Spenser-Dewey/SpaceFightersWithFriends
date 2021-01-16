@@ -1,3 +1,5 @@
+const Constants = require('./Constants');
+
 const Vector2D = (function () {
 
     let basicVector = {
@@ -26,7 +28,8 @@ const Vector2D = (function () {
             return scaleVec;
         },
         angleTo(otherPoint) {
-            return Math.PI + Math.atan2(this.y - otherPoint.y, this.x - otherPoint.x);
+            let relativePoint = Vector2D.create(otherPoint.x - this.x, otherPoint.y - this.y).wrap(-Constants.width / 2, Constants.width / 2, -Constants.height / 2, Constants.height / 2);
+            return Math.atan2(relativePoint.y, relativePoint.x);
         },
         rotateOnOrigin(angleDelta) {
             const magnitude = Math.sqrt(Math.pow(this.x, 2) + Math.pow(this.y, 2));

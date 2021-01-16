@@ -1,9 +1,9 @@
-const width = 5000;
-const height = 5000;
-const minAsteroids = 45;
+const width = 1500;
+const height = 600;
+const minAsteroids = 1;
 const clientWidth = 1500;
 const clientHeight = 800;
-const powerupProbability = .006;
+const powerupProbability = .01;
 const maxPowerups = 15;
 const powerups = {
     "invincibility": 400,
@@ -15,7 +15,8 @@ const powerups = {
     "drill": 6,
     "dex boost": 600,
     "turbo jump": 300,
-    // "missile": 3,
+    "missile": 3,
+    "bomb": 6,
 }
 const debug = true;
 

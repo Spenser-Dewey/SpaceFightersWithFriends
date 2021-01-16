@@ -11,6 +11,7 @@ const GameState = {
   events: [],
   deadShips: [],
   powerups: [],
+  missiles: [],
 
   start() {
     this.events = { asteroids: [], bullets: [], collisions: [], ships: [], deaths: [], frameTimer: 0 };
@@ -34,6 +35,7 @@ const GameState = {
     checkCollisions();
 
     this.events.ships = this.ships;
+    this.events.missiles = this.missiles;
     sendEvents();
   },
 
@@ -46,22 +48,31 @@ const GameState = {
         if (eleArr[i] instanceof Ship) {
           this.deadShips.push(eleArr[i]);
         }
+        if(eleArr[i].target) {
+          this.missiles.splice(this.missiles.indexOf(eleArr[i]), 1);
+        }
         eleArr.splice(i, 1);
       }
     }
   },
   addObject(newObj) {
+    let logEvent = true;
+    if(newObj.target) {
+      this.missiles.push(newObj);
+      logEvent = false;
+    }
+    
     if (newObj instanceof Asteroid) {
       this.asteroids.push(newObj);
-      this.events.asteroids.push(newObj);
+      if(logEvent) this.events.asteroids.push(newObj);
     } else if (newObj instanceof Ship) {
       this.ships.push(newObj); //Ships always put into events
     } else if (newObj instanceof Bullet) {
       this.bullets.push(newObj);
-      this.events.bullets.push(newObj);
+      if(logEvent) this.events.bullets.push(newObj);
     } else if (newObj instanceof Powerup) {
       this.powerups.push(newObj);
-      this.events.powerups.push(newObj);
+      if(logEvent) this.events.powerups.push(newObj);
     }
   },
   addAsteroids() {
@@ -94,7 +105,10 @@ function checkCollisions() {
       GameState.events.collisions.push({ asteroid: aster, ship: GameState.ships[i] });
     }
     else if (bullet = GameState.bullets.find(bullet => overlap(bullet, GameState.ships[i]))) {
-      bullet.destroy();
+      if(!GameState.bullets[i].drill) {
+        GameState.bullets[i].destroy();
+      }
+      
       if (GameState.ships[i].powerups["reflection"]) {
         let newVel = bullet.velocity.constMult(-1);
         GameState.addObject(new Bullet(Vector2D.create(bullet.pos.x + newVel.x * 2, bullet.pos.y + newVel.y * 2), newVel, bullet.angle, bullet.parentShip, bullet.gameInstance));
@@ -175,6 +189,7 @@ function readMessage(data, socket) {
     newShip.powerups.invincibility = 100
     gameData.asteroids = GameState.asteroids;
     gameData.powerups = GameState.powerups;
+    gameData.missiles = GameState.missiles;
     gameData.bullets = GameState.bullets;
     gameData.frameTimer = GameState.frameTimer;
     gameData.type = "join";
