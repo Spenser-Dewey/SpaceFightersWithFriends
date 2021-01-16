@@ -4,8 +4,7 @@
   "description": "Multiplayer multi-directional shooter set in space.",
   "main": "SpaceFightersMain.js",
   "scripts": {
-    "start": "node server/SpaceFightersMain.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node ./server/SpaceFightersMain.js"
   },
   "keywords": [
     "space",
