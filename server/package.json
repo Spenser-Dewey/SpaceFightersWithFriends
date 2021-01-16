@@ -1,0 +1,27 @@
+{
+  "name": "space-fighters",
+  "version": "7.0.3",
+  "description": "Multiplayer multi-directional shooter set in space.",
+  "main": "SpaceFightersMain.js",
+  "scripts": {
+    "start": "node ./SpaceFightersMain.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "space",
+    "fighters",
+    "multiplayer",
+    "game",
+    "fighter",
+    "asteroids",
+    "io"
+  ],
+  "author": "Spenser Dewey, Jamin Eisenberg and Madelyn Dewey",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^7.4.2"
+  },
+  "engines": {
+    "node": "15.x"
+  }
+}
