@@ -121,7 +121,7 @@ GameState.start();
 
 const WebSocket = require('ws');
 const server = new WebSocket.Server({
-  port: 6036
+  port: process.env.PORT || 6036
 });
 
 let sockets = [];
