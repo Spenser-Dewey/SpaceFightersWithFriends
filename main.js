@@ -222,6 +222,7 @@ var AsteroidsGame = /** @class */ (function () {
         this.bangMedium = document.getElementById("bangMedium");
         this.bangSmall = document.getElementById("bangSmall");
         this.fire = document.getElementById("fire");
+        this.playerShipPos = new Vector2D(0, 0);
         var joinMsg = {
             type: "join",
             username: window.username,

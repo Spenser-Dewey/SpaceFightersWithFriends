@@ -298,6 +298,8 @@ class AsteroidsGame {
         this.bangSmall = document.getElementById("bangSmall");
         this.fire = document.getElementById("fire");
 
+        this.playerShipPos = new Vector2D(0, 0);
+
         let joinMsg = {
             type: "join",
             username: window.username,
