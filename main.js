@@ -5,17 +5,17 @@
 //  powerup notification: S
 //  scoring: S
 //  leaderboard: S
-//---------------------------------
 //  sound: J
 //  kill notification: J
 //  update login page: J
 //  respawn players smoothly: S
+//  SPACE STATION: ...we'll see
 function map(x, in_min, in_max, out_min, out_max) {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 var keys_down = new Set();
 function startWebSocket() {
-    window.ws = new WebSocket("wss://space-fighters-multiplayer.herokuapp.com/");
+    window.ws = new WebSocket("ws://192.168.1.128");
     ws.onmessage = function (message) {
         if (window.asteroidsGame) {
             var msg = JSON.parse(message.data);
@@ -28,9 +28,11 @@ function startWebSocket() {
             msg.ships.forEach(function (ship) {
                 asteroidsGame.gameElements.push(new Trail(new Vector2D(ship.pos.x, ship.pos.y).add(Vector2D.fromAngle(ship.angle).mult(-ship.height / 2))));
             });
+            msg.missiles.forEach(function (missile) {
+                asteroidsGame.gameElements.push(new Trail(new Vector2D(missile.pos.x, missile.pos.y).add(Vector2D.fromAngle(missile.angle).mult(-missile.height / 2))));
+            });
             switch (msg.type) {
                 case "join":
-                    console.log(msg);
                     asteroidsGame.playerShipID = msg.id;
                     asteroidsGame.canvas.width = msg.clientWidth;
                     asteroidsGame.canvas.height = msg.clientHeight;
@@ -98,7 +100,6 @@ function startWebSocket() {
                             asteroidsGame.gameElements.push(new Debris(new Vector2D(collision.asteroid.pos.x, collision.asteroid.pos.y), collision.ship.angle, 30, "#334243"));
                         }
                         else if (!collision.asteroid) {
-                            console.log(collision.ship);
                             if (!collision.ship.powerups.invincibility) {
                                 var killer = collision.bullet.parentShip.username;
                                 var killee = collision.ship.username;
@@ -171,6 +172,9 @@ function startWebSocket() {
                         }
                     }
                     asteroidsGame.move(new Vector2D(asteroidsGame.playerShipPos.x, asteroidsGame.playerShipPos.y).add(new Vector2D(asteroidsGame.canvas.width / 2, asteroidsGame.canvas.height / 2).mult(-1)));
+                    msg.missiles.forEach(function (missile) {
+                        asteroidsGame.drawMissile(missile);
+                    });
                     msg.ships.forEach(function (ship) {
                         asteroidsGame.drawShip(ship);
                     });
@@ -222,7 +226,6 @@ var AsteroidsGame = /** @class */ (function () {
         this.bangMedium = document.getElementById("bangMedium");
         this.bangSmall = document.getElementById("bangSmall");
         this.fire = document.getElementById("fire");
-        this.playerShipPos = new Vector2D(0, 0);
         var joinMsg = {
             type: "join",
             username: window.username,
@@ -323,10 +326,34 @@ var AsteroidsGame = /** @class */ (function () {
         this.ctx.stroke();
         this.ctx.restore();
     };
+    AsteroidsGame.prototype.drawMissile = function (missile) {
+        this.ctx.save();
+        var p = new Vector2D(missile.pos.x, missile.pos.y).add((this.playerShipPos.copy()).mult(-1));
+        p.add(new Vector2D(this.canvas.width / 2, this.canvas.height / 2));
+        p.mod(this.width, this.height);
+        this.ctx.translate(p.x, p.y);
+        this.ctx.rotate(missile.angle);
+        this.ctx.fillStyle = "#FFF";
+        this.ctx.beginPath();
+        this.ctx.moveTo(missile.lines[0].x, missile.lines[0].y);
+        for (var i = missile.lines.length - 1; i > -1; i--) {
+            this.ctx.lineTo(missile.lines[i].x, missile.lines[i].y);
+        }
+        this.ctx.fill();
+        this.ctx.restore();
+    };
     AsteroidsGame.prototype.drawShip = function (ship) {
         this.ctx.save();
         if (ship.id === this.playerShipID) {
             this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+            var powers = Object.keys(ship.powerups);
+            var position = 60 - this.canvas.width / 2;
+            for (var i = powers.length - 1; i > -1; i--) {
+                if (ship.powerups[powers[i]]) {
+                    Powerup.drawAt(this.ctx, new Vector2D(position, this.canvas.height / 2 - 60), 0, 120, 120, powers[i], ship.powerups[powers[i]]);
+                    position += 135;
+                }
+            }
         }
         else {
             var p = new Vector2D(ship.pos.x, ship.pos.y).add((this.playerShipPos.copy()).mult(-1));
@@ -550,94 +577,172 @@ var Powerup = /** @class */ (function () {
         this.angle = (this.angleVel + this.angle) % (Math.PI * 2);
     };
     Powerup.prototype.draw = function (ctx) {
-        ctx.fillStyle = "#b0b5b0";
+        Powerup.drawAt(ctx, this.pos, this.angle, this.width, this.height, this.type, -1);
+    };
+    Powerup.drawAt = function (ctx, pos, angle, width, height, type, time) {
         ctx.save();
-        ctx.translate(this.pos.x, this.pos.y);
-        ctx.rotate(this.angle);
+        ctx.translate(pos.x, pos.y);
+        ctx.rotate(angle);
+        ctx.fillStyle = "#b0b5b0";
         ctx.beginPath();
-        ctx.moveTo(this.lines[0].x, this.lines[0].y);
-        for (var i = this.lines.length - 1; i > -1; i--) {
-            ctx.lineTo(this.lines[i].x, this.lines[i].y);
-        }
+        ctx.moveTo(-width / 2, -height / 2);
+        ctx.lineTo(-width / 2, height / 2);
+        ctx.lineTo(width / 2, height / 2);
+        ctx.lineTo(width / 2, -height / 2);
+        ctx.lineTo(-width / 2, -height / 2);
         ctx.fill();
-        switch (this.type) {
+        switch (type) {
             case "invincibility":
                 ctx.strokeStyle = "#22f8";
                 ctx.lineWidth = 5;
                 ctx.beginPath();
-                ctx.arc(0, 0, this.width / 2 - 1, 0, Math.PI * 2);
+                ctx.arc(0, 0, width / 2 - 1, 0, Math.PI * 2);
                 ctx.stroke();
                 break;
             case "triple shot":
                 ctx.strokeStyle = "#8f2839";
                 ctx.lineWidth = 3;
                 ctx.beginPath();
-                ctx.moveTo(-this.width / 2, -this.height / 5);
-                ctx.lineTo(this.width / 5, -this.height / 2);
-                ctx.moveTo(-this.width / 2, 0);
-                ctx.lineTo(2 * this.width / 5, 0);
-                ctx.moveTo(-this.width / 2, this.height / 5);
-                ctx.lineTo(this.width / 5, this.height / 2);
+                ctx.moveTo(-width / 2, -height / 5);
+                ctx.lineTo(width / 5, -height / 2);
+                ctx.moveTo(-width / 2, 0);
+                ctx.lineTo(2 * width / 5, 0);
+                ctx.moveTo(-width / 2, height / 5);
+                ctx.lineTo(width / 5, height / 2);
                 ctx.stroke();
                 break;
             case "turbo shot":
                 ctx.strokeStyle = "#6a9e6d";
                 ctx.lineWidth = 3;
                 ctx.beginPath();
-                ctx.moveTo(-this.width / 2, 0);
-                ctx.lineTo(-3 * this.width / 10, 0);
-                ctx.moveTo(-this.width / 10, 0);
-                ctx.lineTo(this.width / 10, 0);
-                ctx.moveTo(3 * this.width / 10, 0);
-                ctx.lineTo(this.width / 2, 0);
+                ctx.moveTo(-width / 2, 0);
+                ctx.lineTo(-3 * width / 10, 0);
+                ctx.moveTo(-width / 10, 0);
+                ctx.lineTo(width / 10, 0);
+                ctx.moveTo(3 * width / 10, 0);
+                ctx.lineTo(width / 2, 0);
                 ctx.stroke();
                 break;
             case "reflection":
                 ctx.strokeStyle = "#22f8";
                 ctx.lineWidth = 3;
                 ctx.beginPath();
-                ctx.moveTo(-this.width / 2, 0);
-                ctx.lineTo(this.width / 2, 0);
+                ctx.moveTo(-width / 2, 0);
+                ctx.lineTo(width / 2, 0);
                 ctx.stroke();
                 ctx.strokeStyle = "#6a9e6d";
                 ctx.beginPath();
-                ctx.moveTo(-this.width / 2, this.height / 2);
+                ctx.moveTo(-width / 2, height / 2);
                 ctx.lineTo(0, 0);
-                ctx.lineTo(this.width / 2, this.height / 2);
+                ctx.lineTo(width / 2, height / 2);
                 ctx.stroke();
                 break;
             case "asteroid shot":
                 ctx.fillStyle = "#334243";
                 ctx.beginPath();
-                ctx.arc(0, 0, this.width / 2 - 1, 0, Math.PI * 2);
+                ctx.arc(0, 0, width / 2 - 1, 0, Math.PI * 2);
                 ctx.fill();
                 break;
             case "minify":
                 ctx.lineWidth = 3;
                 ctx.strokeStyle = "#5b5496";
                 ctx.beginPath();
-                ctx.moveTo(-this.width / 2, -this.height / 2);
-                ctx.lineTo(-this.width / 20, -this.height / 20);
-                ctx.moveTo(-this.width / 10, -this.height / 5);
-                ctx.lineTo(-this.width / 20, -this.height / 20);
-                ctx.lineTo(-this.width / 5, -this.height / 10);
-                ctx.moveTo(-this.width / 2, this.height / 2);
-                ctx.lineTo(-this.width / 20, this.height / 20);
-                ctx.moveTo(-this.width / 10, this.height / 5);
-                ctx.lineTo(-this.width / 20, this.height / 20);
-                ctx.lineTo(-this.width / 5, this.height / 10);
-                ctx.moveTo(this.width / 2, -this.height / 2);
-                ctx.lineTo(this.width / 20, -this.height / 20);
-                ctx.moveTo(this.width / 10, -this.height / 5);
-                ctx.lineTo(this.width / 20, -this.height / 20);
-                ctx.lineTo(this.width / 5, -this.height / 10);
-                ctx.moveTo(this.width / 2, this.height / 2);
-                ctx.lineTo(this.width / 20, this.height / 20);
-                ctx.moveTo(this.width / 10, this.height / 5);
-                ctx.lineTo(this.width / 20, this.height / 20);
-                ctx.lineTo(this.width / 5, this.height / 10);
+                ctx.moveTo(-width / 2, -height / 2);
+                ctx.lineTo(-width / 20, -height / 20);
+                ctx.moveTo(-width / 10, -height / 5);
+                ctx.lineTo(-width / 20, -height / 20);
+                ctx.lineTo(-width / 5, -height / 10);
+                ctx.moveTo(-width / 2, height / 2);
+                ctx.lineTo(-width / 20, height / 20);
+                ctx.moveTo(-width / 10, height / 5);
+                ctx.lineTo(-width / 20, height / 20);
+                ctx.lineTo(-width / 5, height / 10);
+                ctx.moveTo(width / 2, -height / 2);
+                ctx.lineTo(width / 20, -height / 20);
+                ctx.moveTo(width / 10, -height / 5);
+                ctx.lineTo(width / 20, -height / 20);
+                ctx.lineTo(width / 5, -height / 10);
+                ctx.moveTo(width / 2, height / 2);
+                ctx.lineTo(width / 20, height / 20);
+                ctx.moveTo(width / 10, height / 5);
+                ctx.lineTo(width / 20, height / 20);
+                ctx.lineTo(width / 5, height / 10);
                 ctx.stroke();
                 break;
+            case "dex boost":
+                ctx.fillStyle = "#5555ff";
+                ctx.beginPath();
+                ctx.arc(-width / 4, 0, width / 32, 0, Math.PI * 2);
+                ctx.arc(0, 0, width / 16, 0, Math.PI * 2);
+                ctx.arc(width / 4, 0, width / 8, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case "drill":
+                ctx.fillStyle = "#6a9e6d";
+                ctx.beginPath();
+                ctx.moveTo(-width / 3, -height / 4);
+                ctx.lineTo(width / 3, 0);
+                ctx.lineTo(-width / 3, height / 4);
+                ctx.lineTo(-width / 3, -height / 4);
+                ctx.fill();
+                break;
+            case "turbo jump":
+                ctx.strokeStyle = "FFF";
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(-width / 6, -height / 6);
+                ctx.lineTo(-5 * width / 12, -5 * height / 12);
+                ctx.moveTo(width / 6, height / 6);
+                ctx.lineTo(5 * width / 12, 5 * height / 12);
+                ctx.moveTo(-width / 2, -height / 24);
+                ctx.lineTo(-width / 4, 5 * height / 24);
+                ctx.moveTo(width / 2, height / 24);
+                ctx.lineTo(width / 4, -5 * height / 24);
+                ctx.stroke();
+                break;
+            case "bomb":
+                ctx.strokeStyle = "#6a9e6d";
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(-width / 8, -height / 8);
+                ctx.lineTo(-5 * width / 12, -5 * height / 12);
+                ctx.moveTo(width / 8, height / 8);
+                ctx.lineTo(5 * width / 12, 5 * height / 12);
+                ctx.moveTo(-width / 8, height / 8);
+                ctx.lineTo(-5 * width / 12, 5 * height / 12);
+                ctx.moveTo(width / 8, -height / 8);
+                ctx.lineTo(5 * width / 12, -5 * height / 12);
+                ctx.moveTo(0, -height / 8);
+                ctx.lineTo(0, -5 * height / 12);
+                ctx.moveTo(0, height / 8);
+                ctx.lineTo(0, 5 * height / 12);
+                ctx.moveTo(width / 8, 0);
+                ctx.lineTo(5 * width / 12, 0);
+                ctx.stroke();
+                break;
+            case "missile":
+                ctx.fillStyle = "#8f2839";
+                ctx.beginPath();
+                ctx.moveTo(0, -height / 8);
+                ctx.lineTo(width / 3, 0);
+                ctx.lineTo(0, height / 8);
+                ctx.lineTo(0, -height / 8);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.fillStyle = "#5555ff";
+                ctx.moveTo(0, -height / 8);
+                ctx.lineTo(-width / 2, -height / 8);
+                ctx.lineTo(-width / 2, height / 8);
+                ctx.lineTo(0, height / 8);
+                ctx.fill();
+                break;
+        }
+        if (time > 0) {
+            ctx.textAlign = "center";
+            ctx.textBaseline = "top";
+            ctx.font = "18px Arial";
+            ctx.fillStyle = "#fff";
+            ctx.fillText(type + ":" + time, 0, -height, width);
         }
         ctx.restore();
     };
@@ -693,10 +798,8 @@ var Vector2D = /** @class */ (function () {
         return new Vector2D(Math.cos(angle), Math.sin(angle));
     };
     Vector2D.prototype.mod = function (xMax, yMax) {
-        this.x = ((this.x % xMax) + xMax) % xMax;
-        this.y = ((this.y % yMax) + yMax) % yMax;
-        // this.x %= xMax;
-        // this.y %= yMax;
+        this.x = (this.x + xMax) % xMax;
+        this.y = (this.y + yMax) % yMax;
         return this;
     };
     Vector2D.prototype.copy = function () {
