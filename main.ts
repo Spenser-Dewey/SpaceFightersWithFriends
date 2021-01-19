@@ -414,7 +414,7 @@ class AsteroidsGame {
         this.ctx.strokeStyle = "#fff";
         this.ctx.save();
         this.ctx.translate(shape.pos.x, shape.pos.y);
-        this.ctx.rotate(shape.angle);
+        this.ctx.rotate(shape.angle); 
         this.ctx.beginPath();
 
 
