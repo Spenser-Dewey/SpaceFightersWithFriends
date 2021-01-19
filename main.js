@@ -687,7 +687,7 @@ var Powerup = /** @class */ (function () {
                 ctx.fill();
                 break;
             case "turbo jump":
-                ctx.strokeStyle = "FFF";
+                ctx.strokeStyle = "#FFF";
                 ctx.lineWidth = 4;
                 ctx.beginPath();
                 ctx.moveTo(-width / 6, -height / 6);
