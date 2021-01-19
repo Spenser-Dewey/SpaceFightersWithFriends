@@ -20,7 +20,7 @@ function map(x, in_min, in_max, out_min, out_max) {
 var keys_down: Set<String> = new Set();
 
 function startWebSocket() {
-    window.ws = new WebSocket("wss://192.168.1.128");
+    window.ws = new WebSocket("wss://space-fighters-multiplayer.herokuapp.com");
 
     ws.onmessage = function (message) {
         if (window.asteroidsGame) {
